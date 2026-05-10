@@ -21,6 +21,21 @@ Contoh output: `Selamat pagi, ilham@example.com`
 
 > Hint: `new Date().getHours()`, `Session.getActiveUser().getEmail()`.
 
+**Pseudocode**:
+```
+FUNCTION salamSesuaiJam():
+    jam ← ambil jam sekarang (0-23)
+    email ← ambil email user aktif
+
+    JIKA jam antara 4 dan 11 MAKA salam ← "Selamat pagi"
+    SELAIN ITU JIKA jam antara 11 dan 15 MAKA salam ← "Selamat siang"
+    SELAIN ITU JIKA jam antara 15 dan 18 MAKA salam ← "Selamat sore"
+    SELAIN ITU salam ← "Selamat malam"
+
+    cetak (salam + ", " + email)
+END FUNCTION
+```
+
 ---
 
 ## Soal 2 — Email ke Diri Sendiri dengan Konten Dinamis
@@ -33,6 +48,27 @@ Pakai `Utilities.formatDate` untuk tanggal dan `Session.getScriptTimeZone()` unt
 
 Verifikasi: cek inbox — email harus masuk dalam < 30 detik.
 
+**Pseudocode**:
+```
+FUNCTION kirimRingkasanHari():
+    email ← ambil email user aktif
+    timezone ← ambil timezone script
+    tanggal ← format tanggal hari ini sebagai "dd MMM yyyy"
+
+    subject ← "Ringkasan: " + tanggal
+    body ← gabungan baris berikut:
+        "Halo,"
+        ""
+        "Hari ini adalah hari yang produktif. Lanjutkan!"
+        ""
+        "Salam,"
+        "Bot Apps Script"
+
+    kirim email (ke: email, subject: subject, body: body)
+    cetak konfirmasi terkirim
+END FUNCTION
+```
+
 ---
 
 ## Soal 3 — Helper Function untuk Format Rupiah
@@ -43,6 +79,20 @@ Contoh: `formatRupiah(2500000)` → `"Rp 2.500.000"`.
 Lalu buat function `ujiFormatRupiah()` yang menguji 5 nilai berbeda dan mencetak hasilnya.
 
 > Hint: `angka.toLocaleString("id-ID")`.
+
+**Pseudocode**:
+```
+FUNCTION formatRupiah(angka):
+    angkaTerformat ← format angka pakai locale "id-ID"   // hasilnya pakai titik ribuan
+    KEMBALIKAN "Rp " + angkaTerformat
+END FUNCTION
+
+FUNCTION ujiFormatRupiah():
+    daftarNilai ← [1000, 25000, 150000, 2500000, 1500000000]
+    UNTUK SETIAP n DI daftarNilai:
+        cetak (n + " → " + formatRupiah(n))
+END FUNCTION
+```
 
 ---
 
@@ -55,6 +105,31 @@ Buat function-function kecil:
 
 Lalu function `tampilSapaan()` yang memanggil `bangunSapaan()` dan log hasilnya.
 
+**Pseudocode**:
+```
+FUNCTION getJamSapaan():
+    jam ← ambil jam sekarang
+    JIKA jam antara 4 dan 11 KEMBALIKAN "pagi"
+    JIKA jam antara 11 dan 15 KEMBALIKAN "siang"
+    JIKA jam antara 15 dan 18 KEMBALIKAN "sore"
+    KEMBALIKAN "malam"
+END FUNCTION
+
+FUNCTION getNamaUser():
+    email ← ambil email user aktif
+    bagian ← pecah email pakai "@"
+    KEMBALIKAN bagian[0]    // ambil sebelum @
+END FUNCTION
+
+FUNCTION bangunSapaan():
+    KEMBALIKAN "Selamat " + getJamSapaan() + ", " + getNamaUser() + "!"
+END FUNCTION
+
+FUNCTION tampilSapaan():
+    cetak bangunSapaan()
+END FUNCTION
+```
+
 ---
 
 ## Soal 5 — Try/Catch Practice
@@ -64,6 +139,27 @@ Buat function `bagi(a, b)` yang mengembalikan `a / b`. Tambahkan validasi: kalau
 Buat function `ujiBagi()` yang memanggil `bagi(10, 2)` dan `bagi(10, 0)` di dalam blok `try/catch`. Untuk panggilan yang error, log pesan errornya tanpa menghentikan eksekusi.
 
 > Hint: `throw new Error("...")`.
+
+**Pseudocode**:
+```
+FUNCTION bagi(a, b):
+    JIKA b sama dengan 0:
+        LEMPAR Error("Tidak bisa membagi dengan nol")
+    KEMBALIKAN a / b
+END FUNCTION
+
+FUNCTION ujiBagi():
+    daftarKasus ← [(10, 2), (10, 0), (9, 3), (5, 0)]
+
+    UNTUK SETIAP (a, b) DI daftarKasus:
+        COBA:
+            hasil ← bagi(a, b)
+            cetak (a + " / " + b + " = " + hasil)
+        TANGKAP error:
+            cetak (a + " / " + b + " → ERROR: " + pesan error)
+        // eksekusi tetap lanjut ke iterasi berikutnya
+END FUNCTION
+```
 
 ---
 
@@ -78,6 +174,20 @@ Tanpa melihat dokumentasi resmi, **berdasarkan intuisi nama**, tebak service apa
 5. Memanggil API cuaca eksternal lewat HTTP — `____.fetch(url)`
 
 Tulis jawaban sebagai komentar di kode Anda. Cek di tabel Modul 1 §4 untuk verifikasi.
+
+**Pseudocode pola jawaban**:
+```
+FUNCTION tebakService():
+    // Drive   →  service global yang mengelola file & folder Drive
+    // Email   →  service global untuk kirim email
+    // Sheet   →  service global untuk Spreadsheet → ambil active → cell
+    // Calendar→  service global untuk Calendar → bikin event
+    // HTTP    →  service global untuk fetch URL
+
+    cetak "Lihat komentar di atas untuk jawaban."
+END FUNCTION
+```
+> Tips: nama-nama service di Apps Script polanya `XxxApp`. Pikirkan apa "Xxx"-nya dari topiknya.
 
 ---
 
@@ -94,6 +204,46 @@ Buat function `catatAktivitas(deskripsi)` yang:
 4. Mengirim email konfirmasi ke user dengan subject `[Log Aktivitas] <deskripsi>` dan body berisi seluruh detail object.
 
 Test dengan: `catatAktivitas("Selesai mengerjakan latihan Modul 1")`.
+
+**Pseudocode**:
+```
+FUNCTION catatAktivitas(deskripsi):
+    waktu ← format tanggal sekarang sebagai "yyyy-MM-dd HH:mm:ss"
+    user  ← ambil email user aktif
+
+    entry ← object {
+        waktu:     waktu,
+        user:      user,
+        deskripsi: deskripsi
+    }
+
+    cetak entry sebagai JSON (rapi dengan indent)
+
+    body ← gabungan baris:
+        "Aktivitas tercatat:"
+        ""
+        "Waktu     : " + entry.waktu
+        "User      : " + entry.user
+        "Deskripsi : " + entry.deskripsi
+
+    kirim email (
+        ke:      user,
+        subject: "[Log Aktivitas] " + deskripsi,
+        body:    body
+    )
+END FUNCTION
+
+FUNCTION ujiCatatAktivitas():
+    catatAktivitas("Selesai mengerjakan latihan Modul 1")
+END FUNCTION
+```
+
+**Service & method yang akan dipakai**:
+- `Utilities.formatDate(date, timezone, pattern)` → format tanggal
+- `Session.getActiveUser().getEmail()` → email user
+- `Session.getScriptTimeZone()` → timezone
+- `JSON.stringify(obj, null, 2)` → format JSON dengan indent 2 spasi
+- `MailApp.sendEmail({ to, subject, body })` → kirim email
 
 ---
 
