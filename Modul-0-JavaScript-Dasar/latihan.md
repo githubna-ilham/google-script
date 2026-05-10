@@ -162,7 +162,7 @@ Buat function `hitungBelanja()` yang:
 
 ---
 
-## Checklist Sebelum Hari Onsite
+## Checklist Sebelum Lanjut ke Modul Berikutnya
 
 - [ ] Saya berhasil menjalankan minimal 8 dari 10 soal di atas.
 - [ ] Saya paham beda `const`, `let`, `var`.
@@ -171,4 +171,4 @@ Buat function `hitungBelanja()` yang:
 - [ ] Saya bisa membaca dan mengubah property object.
 - [ ] Saya tahu cara membuka Execution log untuk melihat output.
 
-**Senin pagi kita lanjut Modul 1 — Introduction to Google Apps Script. Sampai jumpa!**
+**Selanjutnya: Modul 1 — Introduction to Google Apps Script.**

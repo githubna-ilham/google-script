@@ -1,21 +1,16 @@
 # Modul 0 — JavaScript Dasar
 
-**Sesi**: Online (Pre-class) — Rabu, 13 Mei 2026 · 13.00 – 16.00 WIB
-**Durasi total**: 180 menit (efektif materi 135', sisanya pembukaan, break, tanya jawab)
-**Prasyarat**: Punya akun Google aktif, browser modern (Chrome/Edge/Firefox), koneksi internet stabil.
-**Hasil belajar**: Setelah sesi ini peserta dapat menulis kode JavaScript sederhana di Google Apps Script Editor — variabel, percabangan, perulangan, function, array, dan object — sebagai pondasi untuk hari-hari onsite.
-
 ---
 
 ## Mengapa JavaScript dulu?
 
-Google Apps Script (GAS) adalah platform otomatisasi Google Workspace yang **bahasa pemrogramannya adalah JavaScript**. Artinya: apapun yang akan kita lakukan di Sheets, Gmail, Drive, dan Calendar nanti — semua ditulis dalam JavaScript. Sesi ini fokus ke **fondasi bahasa**, belum menyentuh API Google. Kalau pondasinya kuat, hari-hari onsite jadi lancar.
+Google Apps Script (GAS) adalah platform otomatisasi Google Workspace yang **bahasa pemrogramannya adalah JavaScript**. Artinya: apapun yang akan kita lakukan di Sheets, Gmail, Drive, dan Calendar nanti — semua ditulis dalam JavaScript. Modul ini fokus ke **fondasi bahasa**, belum menyentuh API Google. Kalau pondasinya kuat, modul-modul berikutnya jadi lancar.
 
-> **Catatan**: Kita sengaja menulis kode langsung di Apps Script Editor, bukan di console browser. Tujuannya supaya environment yang dipakai sejak hari pertama sudah environment kerja yang sama dengan onsite nanti.
+> **Catatan**: Kita sengaja menulis kode langsung di Apps Script Editor, bukan di console browser. Tujuannya supaya environment yang dipakai sejak awal sudah sama dengan environment kerja di modul-modul selanjutnya.
 
 ---
 
-## Persiapan Lingkungan (5 menit)
+## Persiapan Lingkungan
 
 1. Buka [https://script.google.com](https://script.google.com) — login dengan akun Google.
 2. Klik **New project** (kiri atas).
@@ -28,7 +23,7 @@ Google Apps Script (GAS) adalah platform otomatisasi Google Workspace yang **bah
 
 ---
 
-## 1. Variabel & Tipe Data (45 menit, 13.15 – 14.00)
+## 1. Variabel & Tipe Data
 
 ### 1.1 Apa itu variabel?
 
@@ -109,12 +104,12 @@ const pesan1 = "Halo " + nama + ", umur " + umur;
 const pesan2 = `Halo ${nama}, umur ${umur}`;   // template literal — disarankan
 ```
 
-### Hands-on Sesi 1 (10 menit)
+### Hands-on Sesi 1
 Buka Apps Script Editor, ketik function `cekTipe` di atas, jalankan, lihat hasilnya di Execution log. Lalu modifikasi: tambah variabel `tinggiBadan` dan `sudahMakan`, log keduanya beserta tipenya.
 
 ---
 
-## 2. Struktur Kontrol — Percabangan & Perulangan (45 menit, 14.00 – 14.45)
+## 2. Struktur Kontrol — Percabangan & Perulangan
 
 ### 2.1 Percabangan: `if` / `else if` / `else`
 
@@ -211,11 +206,9 @@ function hitungMundur() {
 
 Pakai `while` kalau jumlah iterasi belum diketahui di awal. Hati-hati infinite loop — pastikan kondisi suatu saat menjadi `false`.
 
-### Coffee Break (14.45 – 15.00)
-
 ---
 
-## 3. Function, Array, dan Object (45 menit, 15.00 – 15.45)
+## 3. Function, Array, dan Object
 
 ### 3.1 Function — blok kode yang bisa dipanggil ulang
 
@@ -378,9 +371,9 @@ Pola di atas adalah **pola inti** yang akan kita pakai berulang di Modul 4 (Shee
 
 ---
 
-## 4. Tanya Jawab & Penutup (15.45 – 16.00)
+## 4. Penutup
 
-**Yang harus terbawa ke onsite Senin**:
+**Yang harus dikuasai sebelum lanjut ke modul berikutnya**:
 
 - [ ] Sudah berhasil membuat project di [script.google.com](https://script.google.com)
 - [ ] Sudah pernah menjalankan minimal 1 function dan melihat output di Execution log
@@ -389,10 +382,10 @@ Pola di atas adalah **pola inti** yang akan kita pakai berulang di Modul 4 (Shee
 - [ ] Bisa iterasi array dengan `forEach` atau `for`
 - [ ] Bisa membaca property object dengan notasi titik (`obj.nama`)
 
-**Tugas pra-onsite (wajib selesai sebelum Senin)**:
+**Tugas wajib sebelum lanjut**:
 Kerjakan `latihan.md` di folder ini. Kalau stuck, kunci ada di `latihan-solusi.js` — tapi cobalah sendiri dulu minimal 15 menit per soal sebelum buka kunci.
 
-**Sampai jumpa Senin di Modul 1 — Introduction to Google Apps Script.**
+**Selanjutnya: Modul 1 — Introduction to Google Apps Script.**
 
 ---
 
