@@ -1,0 +1,30 @@
+<!--
+  Template HTML untuk email konfirmasi pesanan.
+  Pakai dari kode dengan: HtmlService.createTemplateFromFile("template-konfirmasi")
+
+  Variabel yang harus di-set sebelum evaluate():
+    - nomor  (string)
+    - nama   (string)
+    - produk (string)
+    - qty    (number/string)
+    - total  (string, sudah diformat)
+
+  Catatan: di Apps Script, file .html ini taruh di project Apps Script
+  (klik + di sidebar → HTML), bukan di folder repo ini. File di repo
+  hanya sebagai referensi.
+-->
+<div style="font-family: Arial, Helvetica, sans-serif; max-width: 600px; color: #1f2937;">
+  <div style="background: #1e40af; color: white; padding: 16px 20px; border-radius: 6px 6px 0 0;">
+    <h2 style="margin: 0;">Konfirmasi Pesanan <?= nomor ?></h2>
+  </div>
+  <div style="border: 1px solid #e5e7eb; border-top: none; padding: 20px; border-radius: 0 0 6px 6px;">
+    <p>Halo <b><?= nama ?></b>,</p>
+    <p>Pesanan Anda telah kami terima dengan rincian berikut:</p>
+    <table style="width: 100%; border-collapse: collapse; margin: 12px 0;">
+      <tr><td style="padding: 6px 12px; background: #f3f4f6;">Produk</td><td style="padding: 6px 12px;"><?= produk ?></td></tr>
+      <tr><td style="padding: 6px 12px;">Qty</td><td style="padding: 6px 12px;"><?= qty ?></td></tr>
+      <tr><td style="padding: 6px 12px; background: #f3f4f6;">Total</td><td style="padding: 6px 12px;"><b>Rp <?= total ?></b></td></tr>
+    </table>
+    <p>Terima kasih telah memilih kami.</p>
+  </div>
+</div>
