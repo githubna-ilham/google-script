@@ -180,6 +180,8 @@ function buatDoc() {
 
 Pola **paling sering dipakai di kantor**: Doc template berisi placeholder seperti `{{nama}}`, `{{tanggal}}`, `{{nominal}}`. Script men-copy template, mengganti placeholder dengan data nyata.
 
+> 📄 **Template lengkap siap pakai** ada di [`template-surat.md`](./template-surat.md) — copy isinya ke Google Doc baru, copy ID Doc dari URL, lalu set sebagai `TEMPLATE_ID` di kode.
+
 ```javascript
 function generateSurat() {
   const templateId = "1AbcXyz...";        // Doc template

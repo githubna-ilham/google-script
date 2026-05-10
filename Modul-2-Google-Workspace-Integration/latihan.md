@@ -11,6 +11,8 @@
    Dengan ini kami informasikan nominal sebesar {{nominal}}.
    ```
    Copy ID Doc dari URL.
+
+   > Untuk **versi template lebih lengkap** (8 placeholder, lengkap dengan kop, tabel, dan signature), pakai isi dari [`template-surat.md`](./template-surat.md).
 4. Set kedua ID sebagai konstanta di awal kode Anda:
    ```javascript
    const FOLDER_ID = "1AbcXyz...";
