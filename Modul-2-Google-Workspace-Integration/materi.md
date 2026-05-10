@@ -129,12 +129,65 @@ function cariPDFBaru() {
 
 **Operator query yang sering dipakai**:
 - `mimeType='...'` — `application/pdf`, `application/vnd.google-apps.spreadsheet`, dll
-- `title contains 'kata'`
+- `title contains 'kata'` — substring match (case-insensitive)
+- `title = 'nama-persis.pdf'` — cocok persis (case-sensitive)
+- `fullText contains 'kata'` — cari di isi file (untuk Doc/Sheet/Slide)
 - `modifiedDate > 'yyyy-mm-dd'`
 - `'<folder-id>' in parents` — filter berdasarkan folder
 - `trashed = false`
+- Boolean: `and`, `or`, `not`, `(...)`
+
+### Cari berdasarkan nama — pilihan cara
+
+| Kebutuhan | Cara | Contoh |
+|---|---|---|
+| Cari **persis** satu nama di **My Drive** | `DriveApp.getFilesByName("nama")` | shortcut, return iterator |
+| Cari **persis** satu nama di **folder spesifik** | `folder.getFilesByName("nama")` | scoped ke folder itu saja |
+| Substring di **semua Drive** | `DriveApp.searchFiles("title contains 'X'")` | flexible, bisa dikombinasi filter lain |
+| Substring **di folder spesifik** | kombinasi `title contains` + `'<folder-id>' in parents` | lihat contoh di bawah |
+
+```javascript
+// 1. Cara cepat — cari di seluruh Drive, nama persis
+function cariByName(nama) {
+  const files = DriveApp.getFilesByName(nama);   // iterator
+  while (files.hasNext()) {
+    const f = files.next();
+    console.log(`${f.getName()} — ${f.getUrl()}`);
+  }
+}
+
+// 2. Cari di folder spesifik, nama persis
+function cariDiFolder(folderId, nama) {
+  const folder = DriveApp.getFolderById(folderId);
+  const files = folder.getFilesByName(nama);
+  while (files.hasNext()) {
+    console.log(files.next().getName());
+  }
+}
+
+// 3. Substring + filter di seluruh Drive
+function cariBerisiKata(kata) {
+  const query = `title contains '${kata}' and trashed = false`;
+  const files = DriveApp.searchFiles(query);
+  while (files.hasNext()) {
+    console.log(files.next().getName());
+  }
+}
+
+// 4. Substring DI folder spesifik (kombinasi parents + title)
+function cariDiFolderBerisiKata(folderId, kata) {
+  const query = `title contains '${kata}' and '${folderId}' in parents and trashed = false`;
+  const files = DriveApp.searchFiles(query);
+  while (files.hasNext()) {
+    console.log(files.next().getName());
+  }
+}
+```
+
+> **Hati-hati quoting**: kalau `kata` mengandung tanda petik `'`, escape dengan backslash: `title contains 'O\\'Brien'`. Untuk keamanan, hindari membangun query dari input user mentah — bisa jadi "query injection" mini.
 
 > Referensi MIME type: [https://developers.google.com/drive/api/guides/mime-types](https://developers.google.com/drive/api/guides/mime-types)
+> Referensi query syntax lengkap: [https://developers.google.com/drive/api/guides/search-files](https://developers.google.com/drive/api/guides/search-files)
 
 ---
 
