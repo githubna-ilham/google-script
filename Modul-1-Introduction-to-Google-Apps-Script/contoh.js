@@ -19,7 +19,7 @@
 function contoh01_sapaUser() {
   const email = Session.getActiveUser().getEmail();
   const pesan = `Halo, ${email}! Selamat datang di Apps Script.`;
-  Logger.log(pesan);
+  console.log(pesan);
 }
 
 
@@ -36,31 +36,29 @@ function contoh02_kirimKonfirmasi() {
     body: "Ini email pertama yang dikirim oleh script Anda. 🎉"
   });
 
-  Logger.log(`Email terkirim ke ${email}`);
+  console.log(`Email terkirim ke ${email}`);
 }
 
 
 /* =========================================================================
- * 3. Logger.log vs console.log — bandingkan output
+ * 3. console — log, info, warn, error
  * ========================================================================= */
 
-function contoh03_loggerVsConsole() {
+function contoh03_consoleLevels() {
   const data = {
     nama: "Sari",
     divisi: "Finance",
     skill: ["Excel", "Apps Script", "SQL"]
   };
 
-  // Cara klasik
-  Logger.log("Logger.log:");
-  Logger.log(data);
+  // Empat level severity
+  console.log("Halo, ini pesan biasa.");
+  console.info("Data berhasil dimuat:", data);
+  console.warn("Hati-hati: skill list akan dipotong jika > 5 item.");
+  console.error("Contoh error (cuma demo, tidak benar-benar error).");
 
-  // Cara V8 modern — biasanya lebih informatif untuk object
-  console.log("console.log:");
-  console.log(data);
-
-  // Format string ala printf
-  Logger.log("Halo %s, divisi %s", data.nama, data.divisi);
+  // Multi-argumen — object dicetak dengan struktur penuh
+  console.log("User detail:", data, "Timestamp:", new Date());
 }
 
 
@@ -69,7 +67,7 @@ function contoh03_loggerVsConsole() {
  * ========================================================================= */
 
 function contoh04_utilities() {
-  Logger.log("Mulai...");
+  console.log("Mulai...");
 
   // Tunggu 1 detik
   Utilities.sleep(1000);
@@ -82,7 +80,7 @@ function contoh04_utilities() {
     "yyyy-MM-dd HH:mm:ss"
   );
 
-  Logger.log(`Selesai pada ${formatted}`);
+  console.log(`Selesai pada ${formatted}`);
 }
 
 
@@ -95,10 +93,10 @@ function contoh05_infoProject() {
   const timezone  = Session.getScriptTimeZone();
   const locale    = Session.getActiveUserLocale();
 
-  Logger.log("=== Info Project ===");
-  Logger.log("User aktif : " + userEmail);
-  Logger.log("Timezone   : " + timezone);
-  Logger.log("Locale     : " + locale);
+  console.log("=== Info Project ===");
+  console.log("User aktif : " + userEmail);
+  console.log("Timezone   : " + timezone);
+  console.log("Locale     : " + locale);
 }
 
 
@@ -109,9 +107,9 @@ function contoh05_infoProject() {
 function contoh06_komposisi() {
   const subject = buildSubject("Laporan Mingguan");
   const body    = buildBody("Sari", 5);
-  Logger.log("Subject: " + subject);
-  Logger.log("Body:");
-  Logger.log(body);
+  console.log("Subject: " + subject);
+  console.log("Body:");
+  console.log(body);
 }
 
 function buildSubject(judul) {
@@ -144,13 +142,13 @@ function contoh07_tryCatch() {
   try {
     // Sengaja error: parsing JSON tidak valid
     const data = JSON.parse("ini bukan JSON");
-    Logger.log(data);
+    console.log(data);
   } catch (err) {
-    Logger.log("Tertangkap error: " + err.message);
+    console.log("Tertangkap error: " + err.message);
     // Eksekusi tetap lanjut
   }
 
-  Logger.log("Script tetap berjalan setelah error.");
+  console.log("Script tetap berjalan setelah error.");
 }
 
 
@@ -162,7 +160,7 @@ function contoh07_tryCatch() {
 function jalankanSemua() {
   const semua = [
     contoh01_sapaUser,
-    contoh03_loggerVsConsole,
+    contoh03_consoleLevels,
     contoh04_utilities,
     contoh05_infoProject,
     contoh06_komposisi,
@@ -170,7 +168,7 @@ function jalankanSemua() {
   ];
 
   semua.forEach((fn, i) => {
-    Logger.log(`\n========== ${i + 1}. ${fn.name} ==========`);
+    console.log(`\n========== ${i + 1}. ${fn.name} ==========`);
     fn();
   });
 }

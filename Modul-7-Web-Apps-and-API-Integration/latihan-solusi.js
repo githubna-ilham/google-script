@@ -163,14 +163,14 @@ function updateCuacaSheet() {
         rows.push([new Date(), k, parseFloat(c.temp_C), c.weatherDesc[0].value, c.humidity + "%"]);
       }
     } catch (err) {
-      Logger.log(`Gagal ${k}: ${err.message}`);
+      console.log(`Gagal ${k}: ${err.message}`);
     }
   });
 
   if (rows.length > 0) {
     sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, 5).setValues(rows);
   }
-  Logger.log(`${rows.length} kota di-update.`);
+  console.log(`${rows.length} kota di-update.`);
 }
 
 function pasangCuacaTrigger() {
@@ -203,7 +203,7 @@ function updateKursIDR() {
     return tStr === today;
   });
   if (todayExists) {
-    Logger.log("Sudah update hari ini. Skip.");
+    console.log("Sudah update hari ini. Skip.");
     return;
   }
 
@@ -212,7 +212,7 @@ function updateKursIDR() {
     muteHttpExceptions: true
   });
   if (r.getResponseCode() !== 200) {
-    Logger.log("API fail.");
+    console.log("API fail.");
     return;
   }
 
@@ -228,7 +228,7 @@ function updateKursIDR() {
   });
 
   sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, 3).setValues(rows);
-  Logger.log(`${rows.length} kurs di-update.`);
+  console.log(`${rows.length} kurs di-update.`);
 }
 
 
@@ -236,7 +236,7 @@ function updateKursIDR() {
 function kirimKeSlack(text) {
   const URL = _props().getProperty("SLACK_WEBHOOK_URL");
   if (!URL) {
-    Logger.log("SLACK_WEBHOOK_URL belum di-set, skip notif.");
+    console.log("SLACK_WEBHOOK_URL belum di-set, skip notif.");
     return;
   }
 

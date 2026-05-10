@@ -49,8 +49,8 @@ Setiap file/folder di Drive punya **ID unik**. Cara ambil ID: buka file di brows
 const folder = DriveApp.getFolderById("1AbcXyz...");
 const file   = DriveApp.getFileById("1MnoPqr...");
 
-Logger.log(folder.getName());
-Logger.log(file.getName() + " — " + file.getMimeType());
+console.log(folder.getName());
+console.log(file.getName() + " — " + file.getMimeType());
 ```
 
 ### 2.2 Membuat file & folder baru
@@ -59,13 +59,13 @@ Logger.log(file.getName() + " — " + file.getMimeType());
 function buatFolderProyek() {
   const root = DriveApp.getRootFolder();   // "My Drive"
   const folder = root.createFolder("Proyek-Otomasi-2026");
-  Logger.log("Folder dibuat: " + folder.getUrl());
+  console.log("Folder dibuat: " + folder.getUrl());
 }
 
 function buatFileTeks() {
   const folder = DriveApp.getFoldersByName("Proyek-Otomasi-2026").next();
   const file = folder.createFile("catatan.txt", "Halo dari Apps Script", "text/plain");
-  Logger.log("File: " + file.getUrl());
+  console.log("File: " + file.getUrl());
 }
 ```
 
@@ -91,7 +91,7 @@ function listSemuaFile() {
 
   while (files.hasNext()) {
     const f = files.next();
-    Logger.log(`${f.getName()} (${f.getMimeType()})`);
+    console.log(`${f.getName()} (${f.getMimeType()})`);
   }
 }
 ```
@@ -122,7 +122,7 @@ function cariPDFBaru() {
 
   while (files.hasNext()) {
     const f = files.next();
-    Logger.log(f.getName());
+    console.log(f.getName());
   }
 }
 ```
@@ -172,7 +172,7 @@ function buatDoc() {
   body.appendListItem("Total nilai: Rp 1.250.000.000");
   body.appendListItem("Customer baru: 18");
 
-  Logger.log("Doc dibuat: " + doc.getUrl());
+  console.log("Doc dibuat: " + doc.getUrl());
 }
 ```
 
@@ -205,7 +205,7 @@ function generateSurat() {
   });
 
   doc.saveAndClose();
-  Logger.log("Surat siap: " + doc.getUrl());
+  console.log("Surat siap: " + doc.getUrl());
 }
 ```
 
@@ -224,7 +224,7 @@ function exportPDF() {
   const folder  = DriveApp.getFolderById("1FolderId...");
   const pdfFile = folder.createFile(pdfBlob).setName(doc.getName() + ".pdf");
 
-  Logger.log("PDF: " + pdfFile.getUrl());
+  console.log("PDF: " + pdfFile.getUrl());
 }
 ```
 
@@ -266,7 +266,7 @@ function buatRapat() {
     sendInvites: true
   });
 
-  Logger.log("Event ID: " + event.getId());
+  console.log("Event ID: " + event.getId());
 }
 ```
 
@@ -309,7 +309,7 @@ function eventHariIni() {
   const events = cal.getEventsForDay(new Date());
 
   events.forEach((e) => {
-    Logger.log(`${e.getStartTime().toLocaleTimeString("id-ID")} — ${e.getTitle()}`);
+    console.log(`${e.getStartTime().toLocaleTimeString("id-ID")} — ${e.getTitle()}`);
   });
 }
 
@@ -320,7 +320,7 @@ function eventMingguIni() {
   tujuhHari.setDate(tujuhHari.getDate() + 7);
 
   const events = cal.getEvents(sekarang, tujuhHari);
-  Logger.log(`Total event 7 hari ke depan: ${events.length}`);
+  console.log(`Total event 7 hari ke depan: ${events.length}`);
 }
 ```
 
@@ -395,8 +395,8 @@ function buatRapatDenganNotulen(judul, mulaiISO, selesaiISO, peserta) {
     sendInvites: true
   });
 
-  Logger.log("Event: " + event.getId());
-  Logger.log("Doc  : " + linkDoc);
+  console.log("Event: " + event.getId());
+  console.log("Doc  : " + linkDoc);
 
   return { eventId: event.getId(), docUrl: linkDoc };
 }

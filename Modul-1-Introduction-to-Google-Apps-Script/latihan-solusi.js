@@ -15,7 +15,7 @@ function salamSesuaiJam() {
   else                             salam = "Selamat malam";
 
   const email = Session.getActiveUser().getEmail();
-  Logger.log(`${salam}, ${email}`);
+  console.log(`${salam}, ${email}`);
 }
 
 
@@ -39,7 +39,7 @@ function kirimRingkasanHari() {
   ].join("\n");
 
   MailApp.sendEmail({ to: email, subject, body });
-  Logger.log(`Email ringkasan terkirim ke ${email}`);
+  console.log(`Email ringkasan terkirim ke ${email}`);
 }
 
 
@@ -50,7 +50,7 @@ function formatRupiah(angka) {
 
 function ujiFormatRupiah() {
   [1000, 25000, 150000, 2500000, 1500000000].forEach((n) => {
-    Logger.log(`${n} → ${formatRupiah(n)}`);
+    console.log(`${n} → ${formatRupiah(n)}`);
   });
 }
 
@@ -74,7 +74,7 @@ function bangunSapaan() {
 }
 
 function tampilSapaan() {
-  Logger.log(bangunSapaan());
+  console.log(bangunSapaan());
 }
 
 
@@ -92,9 +92,9 @@ function ujiBagi() {
   kasus.forEach(([a, b]) => {
     try {
       const hasil = bagi(a, b);
-      Logger.log(`${a} / ${b} = ${hasil}`);
+      console.log(`${a} / ${b} = ${hasil}`);
     } catch (err) {
-      Logger.log(`${a} / ${b} → ERROR: ${err.message}`);
+      console.log(`${a} / ${b} → ERROR: ${err.message}`);
     }
   });
 }
@@ -117,7 +117,7 @@ function tebakService() {
   // 5. Panggil API eksternal
   // → UrlFetchApp.fetch(url)
 
-  Logger.log("Lihat komentar di kode untuk jawaban.");
+  console.log("Lihat komentar di kode untuk jawaban.");
 }
 
 
@@ -133,7 +133,7 @@ function catatAktivitas(deskripsi) {
   const entry = { waktu, user, deskripsi };
 
   // Log
-  Logger.log(JSON.stringify(entry, null, 2));
+  console.log(JSON.stringify(entry, null, 2));
 
   // Email
   MailApp.sendEmail({
@@ -164,7 +164,7 @@ function jalankanSemuaSolusi() {
     tebakService
   ];
   semua.forEach((fn, i) => {
-    Logger.log(`\n========== Soal ${i + 1} ==========`);
+    console.log(`\n========== Soal ${i + 1} ==========`);
     fn();
   });
 }

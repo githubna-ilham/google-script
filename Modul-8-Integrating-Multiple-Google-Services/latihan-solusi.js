@@ -35,7 +35,7 @@ function audit_log(handler, status, payload) {
       JSON.stringify(payload).substring(0, 5000)
     ]);
   } catch (err) {
-    Logger.log("Audit gagal: " + err.message);
+    console.log("Audit gagal: " + err.message);
   }
 }
 
@@ -44,7 +44,7 @@ function audit_log(handler, status, payload) {
 function onboardingIdempotent(responseId, data) {
   const cache = CacheService.getScriptCache();
   if (cache.get(`onboard:${responseId}`)) {
-    Logger.log(`Skip: ${responseId} sudah diproses.`);
+    console.log(`Skip: ${responseId} sudah diproses.`);
     return { skipped: true };
   }
 
@@ -75,7 +75,7 @@ function pasangPipelineReportTrigger() {
   ScriptApp.newTrigger("dailyPipelineReport")
     .timeBased().atHour(7).everyDays(1).create();
 
-  Logger.log("Trigger pipeline report dipasang.");
+  console.log("Trigger pipeline report dipasang.");
 }
 
 function dailyPipelineReport() {
@@ -168,11 +168,11 @@ function getKursCached() {
   const cache = CacheService.getScriptCache();
   const cached = cache.get("kurs-idr");
   if (cached) {
-    Logger.log("Cache hit");
+    console.log("Cache hit");
     return JSON.parse(cached);
   }
 
-  Logger.log("Cache miss, fetching...");
+  console.log("Cache miss, fetching...");
   const r = UrlFetchApp.fetch("https://api.exchangerate-api.com/v4/latest/USD", {
     muteHttpExceptions: true
   });
@@ -186,7 +186,7 @@ function getKursCached() {
 function tampilKurs() {
   for (let i = 0; i < 3; i++) {
     const data = getKursCached();
-    Logger.log(`Run #${i + 1}: USD/IDR = ${data ? data.rates.IDR : "n/a"}`);
+    console.log(`Run #${i + 1}: USD/IDR = ${data ? data.rates.IDR : "n/a"}`);
   }
 }
 
@@ -243,7 +243,7 @@ function diagnose() {
   if (sisa < 10) anomaly = true;
 
   const report = out.join("\n");
-  Logger.log(report);
+  console.log(report);
 
   if (anomaly) {
     MailApp.sendEmail({
@@ -251,6 +251,6 @@ function diagnose() {
       subject: "[Diagnose] Anomali terdeteksi",
       body: report
     });
-    Logger.log("Anomali → email ke admin.");
+    console.log("Anomali → email ke admin.");
   }
 }

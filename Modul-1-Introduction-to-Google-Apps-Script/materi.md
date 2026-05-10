@@ -126,7 +126,7 @@ Hapus isi default `Code.gs`, ganti dengan:
 function sapaUser() {
   const email = Session.getActiveUser().getEmail();
   const pesan = `Halo, ${email}! Selamat datang di Apps Script.`;
-  Logger.log(pesan);
+  console.log(pesan);
 }
 ```
 
@@ -163,7 +163,7 @@ function kirimKonfirmasi() {
     body: "Ini email pertama yang dikirim oleh script Anda. 🎉"
   });
 
-  Logger.log(`Email terkirim ke ${email}`);
+  console.log(`Email terkirim ke ${email}`);
 }
 ```
 
@@ -210,23 +210,24 @@ Tidak perlu hafal semua sekarang. Yang penting: **tahu bahwa daftar ini ada**, s
 
 ---
 
-## 5. Logger.log vs console.log
+## 5. Logging dengan `console`
 
-Dua-duanya bisa dipakai untuk debugging:
+Untuk menampilkan output ke **Execution log**, pakai `console`:
 
 ```javascript
-Logger.log("Halo");      // Apps Script logger klasik
-console.log("Halo");     // Cloud Logging (Stackdriver), V8 runtime
+console.log("Halo");                          // pesan biasa
+console.info("Info: data tersimpan");         // info (ikon biru)
+console.warn("Hati-hati: data hampir penuh"); // warning (ikon kuning)
+console.error("Gagal kirim email");           // error (ikon merah)
 ```
 
-| | `Logger.log` | `console.log` |
-|---|---|---|
-| Tampil di | Execution log (panel bawah editor) | Execution log + Cloud Logging |
-| Format string | Mendukung `%s`, `%d` | Mendukung argumen multi-objek |
-| Object printing | Otomatis ke string sederhana | Lebih kaya (struktur object) |
-| Persistensi | Hanya selama eksekusi terakhir | Tersimpan di Cloud Logging (Google Cloud Project) |
+**Karakteristik**:
+- Tampil di **Execution log** (panel bawah editor) **dan** **Cloud Logging** (Stackdriver) — log persisten, bisa dibaca berhari-hari kemudian.
+- Mendukung argumen multi-objek: `console.log("User:", obj, "Time:", time)`.
+- Object/array di-print dengan struktur lengkap, jauh lebih informatif dibanding stringify manual.
+- Empat level severity (`log`, `info`, `warn`, `error`) berguna untuk filter log saat debug.
 
-**Aturan praktis di pelatihan ini**: pakai `Logger.log` untuk yang sederhana, `console.log` untuk debug object kompleks. Keduanya valid.
+> **Catatan**: Apps Script juga punya `Logger.log` (warisan runtime lama, sebelum V8). Fungsionalitasnya tumpang-tindih dengan `console.log` tapi dengan output lebih sederhana. Di pelatihan ini kita pakai `console.log` saja — lebih modern dan support semua skenario.
 
 ---
 
@@ -255,7 +256,7 @@ Klik salah satu untuk lihat detail log dan error stack trace. Ini **alat utama u
 - [ ] Bisa membuat project baru di [script.google.com](https://script.google.com) dengan nama yang baik.
 - [ ] Paham struktur project: `Code.gs`, `appsscript.json`, sidebar Editor/Triggers/Executions/Settings.
 - [ ] Berhasil menjalankan minimal 2 function (`sapaUser`, `kirimKonfirmasi`) dan menerima email pertama.
-- [ ] Tahu beda `Logger.log` vs `console.log` (level dasar).
+- [ ] Tahu cara pakai `console.log`, `.info`, `.warn`, `.error` untuk debug.
 - [ ] Tahu di mana melihat histori eksekusi.
 - [ ] Mengenal nama-nama service utama (SpreadsheetApp, GmailApp, DriveApp, dll) — tidak perlu hafal semua method, cukup tahu peta-nya.
 

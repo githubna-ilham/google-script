@@ -63,7 +63,7 @@ const ss = SpreadsheetApp.openById("...");
 const sheet = ss.getSheetByName("Karyawan");   // by nama tab
 const semua = ss.getSheets();                   // array semua sheet
 
-semua.forEach((s) => Logger.log(s.getName()));
+semua.forEach((s) => console.log(s.getName()));
 ```
 
 ---
@@ -196,7 +196,7 @@ function bacaSebagaiObject() {
 
   // Sekarang lebih nyaman:
   rows.forEach((r) => {
-    Logger.log(`${r.Nama} (${r.Divisi}): ${r.Gaji}`);
+    console.log(`${r.Nama} (${r.Divisi}): ${r.Gaji}`);
   });
 }
 ```
@@ -391,7 +391,7 @@ function kirimNotifPesananSelesai() {
   }
 
   range.setValues(data);
-  Logger.log(`${terkirim} email dikirim.`);
+  console.log(`${terkirim} email dikirim.`);
 }
 ```
 

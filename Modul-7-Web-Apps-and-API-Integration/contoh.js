@@ -112,13 +112,13 @@ function ambilCuaca(kota) {
   });
 
   if (r.getResponseCode() !== 200) {
-    Logger.log(`Failed: ${r.getResponseCode()}`);
+    console.log(`Failed: ${r.getResponseCode()}`);
     return null;
   }
 
   const data = JSON.parse(r.getContentText());
   const cuaca = data.current_condition[0];
-  Logger.log(`${kota}: ${cuaca.temp_C}°C, ${cuaca.weatherDesc[0].value}`);
+  console.log(`${kota}: ${cuaca.temp_C}°C, ${cuaca.weatherDesc[0].value}`);
   return cuaca;
 }
 
@@ -135,7 +135,7 @@ function ujiCuaca() {
 function kirimKeSlack(text) {
   const URL = PropertiesService.getScriptProperties().getProperty("SLACK_WEBHOOK_URL");
   if (!URL) {
-    Logger.log("Set SLACK_WEBHOOK_URL di Script Properties dulu.");
+    console.log("Set SLACK_WEBHOOK_URL di Script Properties dulu.");
     return;
   }
 
@@ -146,7 +146,7 @@ function kirimKeSlack(text) {
     muteHttpExceptions: true
   });
 
-  Logger.log(`Slack response: ${r.getResponseCode()}`);
+  console.log(`Slack response: ${r.getResponseCode()}`);
 }
 
 
@@ -168,19 +168,19 @@ function _telegramToken() {
 function setTelegramWebhook() {
   const TOKEN = _telegramToken();
   if (!TOKEN) {
-    Logger.log("Set TELEGRAM_BOT_TOKEN dulu.");
+    console.log("Set TELEGRAM_BOT_TOKEN dulu.");
     return;
   }
   const WEB_APP_URL = PropertiesService.getScriptProperties().getProperty("WEB_APP_URL");
   if (!WEB_APP_URL) {
-    Logger.log("Set WEB_APP_URL dulu (URL deployment Web App).");
+    console.log("Set WEB_APP_URL dulu (URL deployment Web App).");
     return;
   }
 
   const r = UrlFetchApp.fetch(
     `https://api.telegram.org/bot${TOKEN}/setWebhook?url=${encodeURIComponent(WEB_APP_URL)}`
   );
-  Logger.log(r.getContentText());
+  console.log(r.getContentText());
 }
 
 function kirimPesanTelegram(chatId, text) {
@@ -238,5 +238,5 @@ function setSemuaProperties() {
     "TELEGRAM_BOT_TOKEN":  "GANTI_TOKEN",
     "SLACK_WEBHOOK_URL":   "GANTI_URL"
   });
-  Logger.log("Properties tersimpan.");
+  console.log("Properties tersimpan.");
 }

@@ -67,9 +67,9 @@ Cek tipe data dengan `typeof`:
 
 ```javascript
 function cekTipe() {
-  Logger.log(typeof "Halo");   // string
-  Logger.log(typeof 25);        // number
-  Logger.log(typeof true);      // boolean
+  console.log(typeof "Halo");   // string
+  console.log(typeof 25);        // number
+  console.log(typeof true);      // boolean
 }
 ```
 
@@ -78,9 +78,9 @@ function cekTipe() {
 **Aritmatika**: `+`, `-`, `*`, `/`, `%` (sisa bagi), `**` (pangkat)
 
 ```javascript
-Logger.log(10 + 3);   // 13
-Logger.log(10 % 3);   // 1
-Logger.log(2 ** 8);   // 256
+console.log(10 + 3);   // 13
+console.log(10 % 3);   // 1
+console.log(2 ** 8);   // 256
 ```
 
 **Perbandingan**: `===`, `!==`, `>`, `<`, `>=`, `<=`
@@ -88,8 +88,8 @@ Logger.log(2 ** 8);   // 256
 > **Penting**: Selalu pakai `===` (tiga sama dengan), bukan `==`. Yang `===` membandingkan nilai **dan** tipe sehingga tidak ada hasil mengejutkan.
 >
 > ```javascript
-> Logger.log(2 == "2");   // true  ← menyesatkan
-> Logger.log(2 === "2");  // false ← jelas
+> console.log(2 == "2");   // true  ← menyesatkan
+> console.log(2 === "2");  // false ← jelas
 > ```
 
 **Logika**: `&&` (AND), `||` (OR), `!` (NOT)
@@ -118,13 +118,13 @@ function cekNilai() {
   const nilai = 78;
 
   if (nilai >= 85) {
-    Logger.log("A");
+    console.log("A");
   } else if (nilai >= 70) {
-    Logger.log("B");
+    console.log("B");
   } else if (nilai >= 55) {
-    Logger.log("C");
+    console.log("C");
   } else {
-    Logger.log("Tidak lulus");
+    console.log("Tidak lulus");
   }
 }
 ```
@@ -173,7 +173,7 @@ function namaHari(angka) {
 ```javascript
 function hitungSampai10() {
   for (let i = 1; i <= 10; i++) {
-    Logger.log(i);
+    console.log(i);
   }
 }
 ```
@@ -184,7 +184,7 @@ Tiga bagian dalam `for`: **inisialisasi** (`let i = 1`), **kondisi lanjut** (`i 
 flowchart TD
     A([Mulai]) --> B["1️⃣ Inisialisasi<br/>let i = 1"]
     B --> C{"2️⃣ Kondisi<br/>i &lt;= 10?"}
-    C -->|true| D["3️⃣ Eksekusi body<br/>Logger.log(i)"]
+    C -->|true| D["3️⃣ Eksekusi body<br/>console.log(i)"]
     D --> E["4️⃣ Langkah<br/>i++"]
     E --> C
     C -->|false| F([Keluar dari loop])
@@ -198,7 +198,7 @@ flowchart TD
 function hitungMundur() {
   let n = 5;
   while (n > 0) {
-    Logger.log(n);
+    console.log(n);
     n--;
   }
 }
@@ -227,7 +227,7 @@ function sapa(nama) {
 
 function jalankan() {
   const pesan = sapa("Budi");
-  Logger.log(pesan);
+  console.log(pesan);
 }
 ```
 
@@ -244,7 +244,7 @@ sequenceDiagram
     participant L as Logger
     J->>S: panggil sapa("Budi")
     S-->>J: return "Halo, Budi!"
-    J->>L: Logger.log("Halo, Budi!")
+    J->>L: console.log("Halo, Budi!")
     L-->>J: tampil di Execution log
 ```
 
@@ -252,7 +252,7 @@ sequenceDiagram
 
 ```javascript
 const tambah = (a, b) => a + b;
-Logger.log(tambah(3, 4));   // 7
+console.log(tambah(3, 4));   // 7
 ```
 
 ### 3.2 Array — daftar berurutan
@@ -272,8 +272,8 @@ flowchart LR
 ```javascript
 const buah = ["apel", "jeruk", "mangga"];
 
-Logger.log(buah[0]);          // apel  (index mulai dari 0)
-Logger.log(buah.length);      // 3
+console.log(buah[0]);          // apel  (index mulai dari 0)
+console.log(buah.length);      // 3
 
 buah.push("pisang");          // tambah di akhir → ["apel","jeruk","mangga","pisang"]
 buah.pop();                   // hapus dari akhir
@@ -287,15 +287,15 @@ const angka = [10, 20, 30, 40];
 
 // Cara 1: forEach
 angka.forEach(function(nilai, index) {
-  Logger.log(`Index ${index}: ${nilai}`);
+  console.log(`Index ${index}: ${nilai}`);
 });
 
 // Cara 2: arrow function (lebih ringkas)
-angka.forEach((nilai) => Logger.log(nilai));
+angka.forEach((nilai) => console.log(nilai));
 
 // Cara 3: for klasik
 for (let i = 0; i < angka.length; i++) {
-  Logger.log(angka[i]);
+  console.log(angka[i]);
 }
 ```
 
@@ -340,8 +340,8 @@ const karyawan = {
   aktif: true
 };
 
-Logger.log(karyawan.nama);          // Sari
-Logger.log(karyawan["divisi"]);     // Finance
+console.log(karyawan.nama);          // Sari
+console.log(karyawan["divisi"]);     // Finance
 
 karyawan.umur = 29;                 // ubah nilai
 karyawan.email = "sari@kantor.id";  // tambah property baru
@@ -360,11 +360,11 @@ const daftarKaryawan = [
 const totalGaji = daftarKaryawan
   .map((k) => k.gaji)
   .reduce((a, b) => a + b, 0);
-Logger.log(totalGaji);   // 24500000
+console.log(totalGaji);   // 24500000
 
 // Ambil hanya divisi Finance
 const finance = daftarKaryawan.filter((k) => k.divisi === "Finance");
-Logger.log(finance.length);   // 2
+console.log(finance.length);   // 2
 ```
 
 Pola di atas adalah **pola inti** yang akan kita pakai berulang di Modul 4 (Sheets) dan seterusnya.

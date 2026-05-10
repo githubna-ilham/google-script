@@ -223,9 +223,9 @@ const threads = GmailApp.search("is:unread from:bos@kantor.id newer_than:7d", 0,
 threads.forEach((thread) => {
   const messages = thread.getMessages();
   messages.forEach((msg) => {
-    Logger.log(`Dari: ${msg.getFrom()}`);
-    Logger.log(`Subject: ${msg.getSubject()}`);
-    Logger.log(`Body (snippet): ${msg.getPlainBody().substring(0, 100)}`);
+    console.log(`Dari: ${msg.getFrom()}`);
+    console.log(`Subject: ${msg.getSubject()}`);
+    console.log(`Body (snippet): ${msg.getPlainBody().substring(0, 100)}`);
   });
 });
 ```
@@ -256,7 +256,7 @@ function prosesEmailInvoice() {
     const msg = thread.getMessages()[0];
 
     // ... proses (extract data, simpan ke Sheet, dll)
-    Logger.log(`Diproses: ${msg.getSubject()}`);
+    console.log(`Diproses: ${msg.getSubject()}`);
 
     thread.addLabel(label);   // marker — pencarian berikutnya skip thread ini
     thread.markRead();
@@ -275,7 +275,7 @@ function ambilAttachmentDariEmail() {
       msg.getAttachments().forEach((att) => {
         const folder = DriveApp.getFolderById("FOLDER_ID");
         folder.createFile(att);   // simpan ke Drive
-        Logger.log(`Disimpan: ${att.getName()}`);
+        console.log(`Disimpan: ${att.getName()}`);
       });
     });
   });

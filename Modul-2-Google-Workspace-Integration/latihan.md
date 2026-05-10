@@ -125,12 +125,12 @@ Buat function `cekBentrok(mulaiISO, selesaiISO)` yang:
 1. Menerima dua string ISO datetime (mulai & selesai event yang ingin dibuat).
 2. Cek apakah di rentang waktu itu sudah ada event lain di kalender default.
 3. Return:
-   - `true` kalau bentrok (return juga daftar judul event yang bentrok via `Logger.log`).
+   - `true` kalau bentrok (return juga daftar judul event yang bentrok via `console.log`).
    - `false` kalau bebas.
 
 Test:
 ```javascript
-Logger.log(cekBentrok("2026-05-15T10:00:00+07:00", "2026-05-15T11:00:00+07:00"));
+console.log(cekBentrok("2026-05-15T10:00:00+07:00", "2026-05-15T11:00:00+07:00"));
 ```
 
 > Hint: `cal.getEvents(mulai, selesai)` mengembalikan array event yang **overlap** dengan rentang itu.

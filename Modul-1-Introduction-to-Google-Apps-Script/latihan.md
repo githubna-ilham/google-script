@@ -103,7 +103,7 @@ Test dengan: `catatAktivitas("Selesai mengerjakan latihan Modul 1")`.
 - [ ] Saya sudah menerima email dari script saya sendiri di inbox.
 - [ ] Saya tahu cara melihat histori eksekusi di sidebar Executions.
 - [ ] Saya bisa menulis function yang memanggil function lain.
-- [ ] Saya tahu beda `Logger.log` dan `console.log`.
+- [ ] Saya tahu cara pakai `console.log`, `.info`, `.warn`, `.error`.
 - [ ] Saya bisa menyebut minimal 5 nama service Apps Script.
 
 **Selanjutnya: Modul 2 — Google Workspace Integration (Drive, Docs, Calendar).**

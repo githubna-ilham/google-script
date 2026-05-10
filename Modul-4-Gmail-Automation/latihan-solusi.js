@@ -20,7 +20,7 @@ function kirimSalamPribadi() {
       </div>
     `
   });
-  Logger.log("Email salam terkirim ke " + email);
+  console.log("Email salam terkirim ke " + email);
 }
 
 
@@ -29,7 +29,7 @@ function kirimAman(daftarEmail, subject, htmlBody) {
   const sisa = MailApp.getRemainingDailyQuota();
 
   if (sisa < daftarEmail.length) {
-    Logger.log(`⚠ Quota tidak cukup. Sisa: ${sisa}, butuh: ${daftarEmail.length}. Tidak mengirim.`);
+    console.log(`⚠ Quota tidak cukup. Sisa: ${sisa}, butuh: ${daftarEmail.length}. Tidak mengirim.`);
     return;
   }
 
@@ -43,7 +43,7 @@ function kirimAman(daftarEmail, subject, htmlBody) {
     });
     count++;
   });
-  Logger.log(`Sukses: ${count} email terkirim.`);
+  console.log(`Sukses: ${count} email terkirim.`);
 }
 
 function ujiKirimAman() {
@@ -71,7 +71,7 @@ function kirimNewsletter(daftarPenerima) {
       htmlBody: html
     });
   });
-  Logger.log(`Newsletter terkirim ke ${daftarPenerima.length} alamat.`);
+  console.log(`Newsletter terkirim ke ${daftarPenerima.length} alamat.`);
 }
 
 function ujiNewsletter() {
@@ -102,7 +102,7 @@ function kirimDenganLampiran() {
     body: "Terlampir 2 file.",
     attachments: [txtBlob, csvBlob]
   });
-  Logger.log("Email dengan 2 lampiran terkirim.");
+  console.log("Email dengan 2 lampiran terkirim.");
 }
 
 
@@ -121,9 +121,9 @@ function auditInbox7Hari() {
   });
 
   const sorted = Object.entries(perDomain).sort((a, b) => b[1] - a[1]);
-  Logger.log(`Audit inbox 7 hari (unread): ${threads.length} thread total`);
+  console.log(`Audit inbox 7 hari (unread): ${threads.length} thread total`);
   sorted.forEach(([domain, count]) => {
-    Logger.log(`  ${domain.padEnd(20)} : ${count} email`);
+    console.log(`  ${domain.padEnd(20)} : ${count} email`);
   });
 }
 
@@ -132,7 +132,7 @@ function auditInbox7Hari() {
 function simpanLampiranKePDF() {
   const PARENT_FOLDER_ID = "GANTI_DENGAN_ID_FOLDER_INVOICES";
   if (PARENT_FOLDER_ID === "GANTI_DENGAN_ID_FOLDER_INVOICES") {
-    Logger.log("Set PARENT_FOLDER_ID dulu.");
+    console.log("Set PARENT_FOLDER_ID dulu.");
     return;
   }
 
@@ -170,7 +170,7 @@ function simpanLampiranKePDF() {
     thread.addLabel(label);
   });
 
-  Logger.log(`${saved} PDF disimpan.`);
+  console.log(`${saved} PDF disimpan.`);
 }
 
 
@@ -178,7 +178,7 @@ function simpanLampiranKePDF() {
 function prosesPengaduan() {
   const SHEET_ID = "GANTI_DENGAN_ID_SHEET";
   if (SHEET_ID === "GANTI_DENGAN_ID_SHEET") {
-    Logger.log("Set SHEET_ID dulu.");
+    console.log("Set SHEET_ID dulu.");
     return;
   }
 
@@ -242,5 +242,5 @@ function prosesPengaduan() {
   }
 
   range.setValues(data);
-  Logger.log(`${proses} pengaduan diproses.`);
+  console.log(`${proses} pengaduan diproses.`);
 }

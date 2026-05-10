@@ -37,7 +37,7 @@ function CONFIG() {
 function audit_log(status, payload) {
   const cfg = CONFIG();
   if (!cfg.AUDIT_SHEET_ID) {
-    Logger.log(`[AUDIT] ${status}: ${JSON.stringify(payload)}`);
+    console.log(`[AUDIT] ${status}: ${JSON.stringify(payload)}`);
     return;
   }
 
@@ -50,7 +50,7 @@ function audit_log(status, payload) {
       JSON.stringify(payload).substring(0, 5000)
     ]);
   } catch (err) {
-    Logger.log(`Audit gagal: ${err.message}`);
+    console.log(`Audit gagal: ${err.message}`);
   }
 }
 
@@ -186,7 +186,7 @@ function onboardingHandler(data) {
     email_sendWelcome(data, docUrl);
 
     audit_log("onboarding-success", { ...ctx, docUrl, eventId });
-    Logger.log(`Onboarding selesai untuk ${data.nama}.`);
+    console.log(`Onboarding selesai untuk ${data.nama}.`);
   } catch (err) {
     audit_log("onboarding-failed", { ...ctx, error: err.message });
     throw err;
@@ -211,7 +211,7 @@ function ujiOnboarding() {
 function pasangTriggerOnboarding() {
   const FORM_ID = _props().getProperty("ONBOARDING_FORM_ID");
   if (!FORM_ID) {
-    Logger.log("Set ONBOARDING_FORM_ID dulu.");
+    console.log("Set ONBOARDING_FORM_ID dulu.");
     return;
   }
 
@@ -223,7 +223,7 @@ function pasangTriggerOnboarding() {
     .forForm(FormApp.openById(FORM_ID))
     .onFormSubmit().create();
 
-  Logger.log("Trigger onboarding dipasang.");
+  console.log("Trigger onboarding dipasang.");
 }
 
 function onFormSubmitOnboarding(e) {
@@ -231,13 +231,13 @@ function onFormSubmitOnboarding(e) {
   const cache = CacheService.getScriptCache();
 
   if (cache.get(`onboard:${responseId}`)) {
-    Logger.log("Sudah diproses. Skip.");
+    console.log("Sudah diproses. Skip.");
     return;
   }
 
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(10000)) {
-    Logger.log("Gagal dapat lock.");
+    console.log("Gagal dapat lock.");
     return;
   }
 
@@ -266,11 +266,11 @@ function ambilDataKursCached() {
   const cache = CacheService.getScriptCache();
   const cached = cache.get("kurs");
   if (cached) {
-    Logger.log("Cache hit");
+    console.log("Cache hit");
     return JSON.parse(cached);
   }
 
-  Logger.log("Cache miss, fetching...");
+  console.log("Cache miss, fetching...");
   const r = UrlFetchApp.fetch("https://api.exchangerate-api.com/v4/latest/USD", {
     muteHttpExceptions: true
   });

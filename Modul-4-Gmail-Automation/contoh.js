@@ -4,7 +4,7 @@
  * Catatan keamanan:
  *   - Jangan jalankan contoh yang kirim banyak email tanpa modifikasi.
  *   - Default semua contoh kirim ke email Anda sendiri (Session.getActiveUser).
- *   - Cek quota: Logger.log(MailApp.getRemainingDailyQuota());
+ *   - Cek quota: console.log(MailApp.getRemainingDailyQuota());
  */
 
 
@@ -15,7 +15,7 @@
 function contoh01_kirimSederhana() {
   const me = Session.getActiveUser().getEmail();
   MailApp.sendEmail(me, "Demo Modul 4 — Sederhana", "Hai, ini email plain text.");
-  Logger.log("Terkirim ke " + me);
+  console.log("Terkirim ke " + me);
 }
 
 function contoh02_kirimLengkap() {
@@ -34,11 +34,11 @@ function contoh02_kirimLengkap() {
     name: "Bot Otomasi M4",
     replyTo: me
   });
-  Logger.log("Email lengkap terkirim.");
+  console.log("Email lengkap terkirim.");
 }
 
 function contoh03_cekQuota() {
-  Logger.log("Sisa quota hari ini: " + MailApp.getRemainingDailyQuota());
+  console.log("Sisa quota hari ini: " + MailApp.getRemainingDailyQuota());
 }
 
 
@@ -69,7 +69,7 @@ function contoh04_kirimTemplate() {
     body: `Pesanan ${data.nomor} dikonfirmasi.`,
     htmlBody: html
   });
-  Logger.log("Template terkirim.");
+  console.log("Template terkirim.");
 }
 
 
@@ -81,7 +81,7 @@ function contoh05_attachmentDariDrive() {
   // Set FILE_ID dengan ID file di Drive Anda
   const FILE_ID = "GANTI_DENGAN_ID_FILE";
   if (FILE_ID === "GANTI_DENGAN_ID_FILE") {
-    Logger.log("Set FILE_ID dulu.");
+    console.log("Set FILE_ID dulu.");
     return;
   }
 
@@ -120,7 +120,7 @@ function contoh07_exportDocSebagaiPDF() {
   // Set DOC_ID
   const DOC_ID = "GANTI_DENGAN_ID_DOC";
   if (DOC_ID === "GANTI_DENGAN_ID_DOC") {
-    Logger.log("Set DOC_ID dulu.");
+    console.log("Set DOC_ID dulu.");
     return;
   }
 
@@ -142,10 +142,10 @@ function contoh07_exportDocSebagaiPDF() {
 function contoh08_searchEmail() {
   const threads = GmailApp.search("is:unread newer_than:7d", 0, 10);
 
-  Logger.log(`Ditemukan ${threads.length} thread belum dibaca dalam 7 hari.`);
+  console.log(`Ditemukan ${threads.length} thread belum dibaca dalam 7 hari.`);
   threads.forEach((t, i) => {
     const m = t.getMessages()[0];
-    Logger.log(`${i + 1}. [${m.getDate().toLocaleDateString("id-ID")}] ${m.getFrom()} — ${m.getSubject()}`);
+    console.log(`${i + 1}. [${m.getDate().toLocaleDateString("id-ID")}] ${m.getFrom()} — ${m.getSubject()}`);
   });
 }
 
@@ -153,7 +153,7 @@ function contoh09_simpanAttachmentKeDrive() {
   // Set FOLDER_ID untuk folder tujuan
   const FOLDER_ID = "GANTI_DENGAN_ID_FOLDER";
   if (FOLDER_ID === "GANTI_DENGAN_ID_FOLDER") {
-    Logger.log("Set FOLDER_ID dulu.");
+    console.log("Set FOLDER_ID dulu.");
     return;
   }
 
@@ -174,7 +174,7 @@ function contoh09_simpanAttachmentKeDrive() {
     thread.addLabel(label);
   });
 
-  Logger.log(`${count} attachment disimpan ke Drive.`);
+  console.log(`${count} attachment disimpan ke Drive.`);
 }
 
 
@@ -191,13 +191,13 @@ function contoh10_autoReplyPengaduan() {
   // Set SHEET_ID
   const SHEET_ID = "GANTI_DENGAN_ID_SHEET";
   if (SHEET_ID === "GANTI_DENGAN_ID_SHEET") {
-    Logger.log("Set SHEET_ID dulu.");
+    console.log("Set SHEET_ID dulu.");
     return;
   }
 
   const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName("Pengaduan");
   if (!sheet) {
-    Logger.log("Tab 'Pengaduan' tidak ada.");
+    console.log("Tab 'Pengaduan' tidak ada.");
     return;
   }
 
@@ -241,7 +241,7 @@ function contoh10_autoReplyPengaduan() {
   }
 
   range.setValues(data);
-  Logger.log(`${kirim} pengaduan auto-reply.`);
+  console.log(`${kirim} pengaduan auto-reply.`);
 }
 
 

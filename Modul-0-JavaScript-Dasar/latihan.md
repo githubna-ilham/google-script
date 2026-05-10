@@ -4,7 +4,7 @@
 1. Kerjakan di Google Apps Script Editor ([script.google.com](https://script.google.com)).
 2. Buat 1 project baru bernama `Latihan-Modul-0`.
 3. Tiap soal = 1 function. Beri nama function persis seperti yang diminta soal.
-4. Verifikasi hasil dengan `Logger.log()` lalu cek di Execution log.
+4. Verifikasi hasil dengan `console.log()` lalu cek di Execution log.
 5. Coba mandiri dulu **minimal 15 menit per soal** sebelum melihat `latihan-solusi.js`.
 
 **Target waktu**: 60–90 menit untuk 10 soal.

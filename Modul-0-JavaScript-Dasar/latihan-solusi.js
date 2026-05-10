@@ -15,10 +15,10 @@ function sapaPersonal(nama, waktu) {
 }
 
 function ujiSoal1() {
-  Logger.log(sapaPersonal("Budi", "pagi"));
-  Logger.log(sapaPersonal("Sari", "siang"));
-  Logger.log(sapaPersonal("Tina", "malam"));
-  Logger.log(sapaPersonal("Andi", "sore"));   // fallback
+  console.log(sapaPersonal("Budi", "pagi"));
+  console.log(sapaPersonal("Sari", "siang"));
+  console.log(sapaPersonal("Tina", "malam"));
+  console.log(sapaPersonal("Andi", "sore"));   // fallback
 }
 
 
@@ -29,7 +29,7 @@ function celsiusKeFahrenheit(c) {
 
 function tabelSuhu() {
   for (let c = 0; c <= 100; c += 25) {
-    Logger.log(`${c}°C = ${celsiusKeFahrenheit(c)}°F`);
+    console.log(`${c}°C = ${celsiusKeFahrenheit(c)}°F`);
   }
 }
 
@@ -46,7 +46,7 @@ function hitungGrade(nilai) {
 
 function ujiSoal3() {
   [95, 70, 54, 40, 39, -5, 110].forEach((n) => {
-    Logger.log(`${n} → ${hitungGrade(n)}`);
+    console.log(`${n} → ${hitungGrade(n)}`);
   });
 }
 
@@ -54,24 +54,24 @@ function ujiSoal3() {
 /* ----- Soal 4: Bilangan Genap ----- */
 function cetakGenap(maks) {
   for (let i = 2; i <= maks; i += 2) {
-    Logger.log(i);
+    console.log(i);
   }
 }
 
 function cetakGenapV2(maks) {
   const hasil = Array.from({ length: maks }, (_, i) => i + 1)
     .filter((n) => n % 2 === 0);
-  hasil.forEach((n) => Logger.log(n));
+  hasil.forEach((n) => console.log(n));
 }
 
 
 /* ----- Soal 5: FizzBuzz ----- */
 function fizzBuzz(n) {
   for (let i = 1; i <= n; i++) {
-    if (i % 15 === 0)      Logger.log("FizzBuzz");
-    else if (i % 3 === 0)  Logger.log("Fizz");
-    else if (i % 5 === 0)  Logger.log("Buzz");
-    else                   Logger.log(i);
+    if (i % 15 === 0)      console.log("FizzBuzz");
+    else if (i % 3 === 0)  console.log("Fizz");
+    else if (i % 5 === 0)  console.log("Buzz");
+    else                   console.log(i);
   }
 }
 
@@ -87,11 +87,11 @@ function statistikNilai() {
   const lulus     = nilai.filter((n) => n >= 70);
   const persenLulus = (lulus.length / nilai.length * 100).toFixed(1);
 
-  Logger.log(`Tertinggi : ${tertinggi}`);
-  Logger.log(`Terendah  : ${terendah}`);
-  Logger.log(`Rata-rata : ${rataRata}`);
-  Logger.log(`Lulus     : ${lulus.length} dari ${nilai.length}`);
-  Logger.log(`Persentase: ${persenLulus}%`);
+  console.log(`Tertinggi : ${tertinggi}`);
+  console.log(`Terendah  : ${terendah}`);
+  console.log(`Rata-rata : ${rataRata}`);
+  console.log(`Lulus     : ${lulus.length} dari ${nilai.length}`);
+  console.log(`Persentase: ${persenLulus}%`);
 }
 
 
@@ -106,14 +106,14 @@ function analisaProduk() {
   ];
 
   const tersedia = produk.filter((p) => p.stok > 0);
-  Logger.log("Produk tersedia:");
-  tersedia.forEach((p) => Logger.log(`  - ${p.nama}`));
+  console.log("Produk tersedia:");
+  tersedia.forEach((p) => console.log(`  - ${p.nama}`));
 
   const totalInventori = produk.reduce((sum, p) => sum + p.harga * p.stok, 0);
-  Logger.log(`Total nilai inventori: Rp ${totalInventori.toLocaleString("id-ID")}`);
+  console.log(`Total nilai inventori: Rp ${totalInventori.toLocaleString("id-ID")}`);
 
   const termahal = tersedia.reduce((max, p) => p.harga > max.harga ? p : max);
-  Logger.log(`Produk termahal (tersedia): ${termahal.nama} (Rp ${termahal.harga.toLocaleString("id-ID")})`);
+  console.log(`Produk termahal (tersedia): ${termahal.nama} (Rp ${termahal.harga.toLocaleString("id-ID")})`);
 }
 
 
@@ -128,7 +128,7 @@ function daftarKaryawanBaru() {
   karyawan.forEach((k) => {
     k.tunjangan = k.gajiPokok * 0.2;
     k.gajiTotal = k.gajiPokok + k.tunjangan;
-    Logger.log(JSON.stringify(k));
+    console.log(JSON.stringify(k));
   });
 }
 
@@ -147,8 +147,8 @@ function cariPeserta(id) {
 }
 
 function ujiSoal9() {
-  Logger.log(JSON.stringify(cariPeserta("P002")));
-  Logger.log(cariPeserta("P999"));
+  console.log(JSON.stringify(cariPeserta("P002")));
+  console.log(cariPeserta("P999"));
 }
 
 
@@ -175,19 +175,19 @@ function hitungBelanja() {
   const totalBayar  = total - nilaiDiskon;
 
   // Cetak
-  Logger.log("Item       | Qty | Harga      | Subtotal");
-  Logger.log("-----------+-----+------------+------------");
+  console.log("Item       | Qty | Harga      | Subtotal");
+  console.log("-----------+-----+------------+------------");
   baris.forEach((b) => {
     const item = b.item.padEnd(10);
     const qty  = String(b.qty).padStart(3);
     const hrg  = b.harga.toLocaleString("id-ID").padStart(10);
     const sub  = b.subtotal.toLocaleString("id-ID").padStart(10);
-    Logger.log(`${item} | ${qty} | ${hrg} | ${sub}`);
+    console.log(`${item} | ${qty} | ${hrg} | ${sub}`);
   });
-  Logger.log("-----------+-----+------------+------------");
-  Logger.log(`Total       : Rp ${total.toLocaleString("id-ID")}`);
-  Logger.log(`Diskon ${persenDiskon}%   : Rp ${nilaiDiskon.toLocaleString("id-ID")}`);
-  Logger.log(`Total bayar : Rp ${totalBayar.toLocaleString("id-ID")}`);
+  console.log("-----------+-----+------------+------------");
+  console.log(`Total       : Rp ${total.toLocaleString("id-ID")}`);
+  console.log(`Diskon ${persenDiskon}%   : Rp ${nilaiDiskon.toLocaleString("id-ID")}`);
+  console.log(`Total bayar : Rp ${totalBayar.toLocaleString("id-ID")}`);
 }
 
 
@@ -201,7 +201,7 @@ function jalankanSemuaSolusi() {
     ujiSoal9, hitungBelanja
   ];
   semua.forEach((fn, i) => {
-    Logger.log(`\n========== Soal ${i + 1} ==========`);
+    console.log(`\n========== Soal ${i + 1} ==========`);
     fn();
   });
 }

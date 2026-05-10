@@ -37,27 +37,27 @@ function _getSpreadsheet() {
 
 function contoh01_aksesSheet() {
   const ss = _getSpreadsheet();
-  Logger.log("Spreadsheet: " + ss.getName());
-  Logger.log("Sheets: " + ss.getSheets().map((s) => s.getName()).join(", "));
+  console.log("Spreadsheet: " + ss.getName());
+  console.log("Sheets: " + ss.getSheets().map((s) => s.getName()).join(", "));
 
   const sheet = ss.getSheetByName("Karyawan");
-  Logger.log("Total baris dengan data: " + sheet.getLastRow());
-  Logger.log("Total kolom dengan data: " + sheet.getLastColumn());
+  console.log("Total baris dengan data: " + sheet.getLastRow());
+  console.log("Total kolom dengan data: " + sheet.getLastColumn());
 }
 
 function contoh02_bacaSatuSel() {
   const sheet = _getSpreadsheet().getSheetByName("Karyawan");
   const nama  = sheet.getRange("A2").getValue();
-  Logger.log("A2 = " + nama);
+  console.log("A2 = " + nama);
 }
 
 function contoh03_bacaArea() {
   const sheet = _getSpreadsheet().getSheetByName("Karyawan");
   const data  = sheet.getRange("A2:C6").getValues();
 
-  Logger.log("Tipe: " + (Array.isArray(data) ? "Array 2D" : typeof data));
-  Logger.log("Dimensi: " + data.length + " × " + data[0].length);
-  data.forEach((row, i) => Logger.log(`Baris ${i}: ${JSON.stringify(row)}`));
+  console.log("Tipe: " + (Array.isArray(data) ? "Array 2D" : typeof data));
+  console.log("Dimensi: " + data.length + " × " + data[0].length);
+  data.forEach((row, i) => console.log(`Baris ${i}: ${JSON.stringify(row)}`));
 }
 
 
@@ -68,7 +68,7 @@ function contoh03_bacaArea() {
 function contoh04_tulisSatuSel() {
   const sheet = _getSpreadsheet().getSheetByName("Karyawan");
   sheet.getRange("D2").setValue("Diperbarui");
-  Logger.log("D2 di-set.");
+  console.log("D2 di-set.");
 }
 
 function contoh05_tulisBatch() {
@@ -78,7 +78,7 @@ function contoh05_tulisBatch() {
   const status = [["A"], ["B"], ["B"], ["A"], ["C"]];   // 5×1 array 2D
   sheet.getRange("D2:D6").setValues(status);
 
-  Logger.log("D2:D6 di-update batch.");
+  console.log("D2:D6 di-update batch.");
 }
 
 
@@ -98,7 +98,7 @@ function contoh06_bacaSebagaiObject() {
   });
 
   rows.forEach((r) => {
-    Logger.log(`${r.Nama} (${r.Divisi}) — Rp ${(r.Gaji || 0).toLocaleString("id-ID")}`);
+    console.log(`${r.Nama} (${r.Divisi}) — Rp ${(r.Gaji || 0).toLocaleString("id-ID")}`);
   });
 }
 
@@ -116,8 +116,8 @@ function contoh07_filterDanReduce() {
   const filtered = rows.filter((r) => r.Divisi === "Finance" && r.Gaji >= 8000000);
   const totalGaji = filtered.reduce((sum, r) => sum + r.Gaji, 0);
 
-  Logger.log(`Karyawan Finance gaji >= 8jt: ${filtered.length}`);
-  Logger.log(`Total gaji: Rp ${totalGaji.toLocaleString("id-ID")}`);
+  console.log(`Karyawan Finance gaji >= 8jt: ${filtered.length}`);
+  console.log(`Total gaji: Rp ${totalGaji.toLocaleString("id-ID")}`);
 }
 
 
@@ -139,7 +139,7 @@ function contoh08_appendBatch() {
   sheet.getRange(startRow, 1, baruArr.length, baruArr[0].length)
        .setValues(baruArr);
 
-  Logger.log(`${baruArr.length} baris di-append mulai dari baris ${startRow}.`);
+  console.log(`${baruArr.length} baris di-append mulai dari baris ${startRow}.`);
 }
 
 function contoh09_cariBaris() {
@@ -150,12 +150,12 @@ function contoh09_cariBaris() {
   const target = "Tina";
   for (let i = 1; i < data.length; i++) {
     if (data[i][colNama] === target) {
-      Logger.log(`${target} ditemukan di baris ${i + 1}`);
+      console.log(`${target} ditemukan di baris ${i + 1}`);
       sheet.getRange(i + 1, data[0].indexOf("Status") + 1).setValue("FOUND");
       return;
     }
   }
-  Logger.log(`${target} tidak ditemukan.`);
+  console.log(`${target} tidak ditemukan.`);
 }
 
 
@@ -176,7 +176,7 @@ function contoh10_highlightGajiTinggi() {
            .setFontWeight("bold");
     }
   }
-  Logger.log("Highlight selesai.");
+  console.log("Highlight selesai.");
 }
 
 function contoh11_resetFormat() {
@@ -184,7 +184,7 @@ function contoh11_resetFormat() {
   sheet.getDataRange()
        .setBackground(null)
        .setFontWeight("normal");
-  Logger.log("Format direset.");
+  console.log("Format direset.");
 }
 
 
@@ -245,7 +245,7 @@ function onOpen() {
 function contoh12_kirimNotifPesananSelesai() {
   const sheet = _getSpreadsheet().getSheetByName("Pesanan");
   if (!sheet) {
-    Logger.log("Tab 'Pesanan' tidak ada — bikin dulu sesuai prasyarat.");
+    console.log("Tab 'Pesanan' tidak ada — bikin dulu sesuai prasyarat.");
     return;
   }
 
@@ -276,7 +276,7 @@ function contoh12_kirimNotifPesananSelesai() {
   }
 
   range.setValues(data);
-  Logger.log(`${terkirim} email dikirim.`);
+  console.log(`${terkirim} email dikirim.`);
 }
 
 
@@ -285,15 +285,15 @@ function contoh12_kirimNotifPesananSelesai() {
  * ========================================================================= */
 
 function jalankanDemoAman() {
-  Logger.log("\n=== contoh01 ===");
+  console.log("\n=== contoh01 ===");
   contoh01_aksesSheet();
 
-  Logger.log("\n=== contoh03 ===");
+  console.log("\n=== contoh03 ===");
   contoh03_bacaArea();
 
-  Logger.log("\n=== contoh06 ===");
+  console.log("\n=== contoh06 ===");
   contoh06_bacaSebagaiObject();
 
-  Logger.log("\n=== contoh07 ===");
+  console.log("\n=== contoh07 ===");
   contoh07_filterDanReduce();
 }

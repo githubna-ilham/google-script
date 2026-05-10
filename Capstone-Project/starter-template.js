@@ -37,7 +37,7 @@ function CONFIG() {
 function audit_log(handler, status, payload) {
   const cfg = CONFIG();
   if (!cfg.AUDIT_SHEET_ID) {
-    Logger.log(`[AUDIT] ${handler} - ${status}: ${JSON.stringify(payload)}`);
+    console.log(`[AUDIT] ${handler} - ${status}: ${JSON.stringify(payload)}`);
     return;
   }
 
@@ -51,7 +51,7 @@ function audit_log(handler, status, payload) {
       JSON.stringify(payload).substring(0, 5000)
     ]);
   } catch (err) {
-    Logger.log(`Audit gagal: ${err.message}`);
+    console.log(`Audit gagal: ${err.message}`);
   }
 }
 
@@ -62,7 +62,7 @@ function audit_log(handler, status, payload) {
 function withIdempotency(key, handler) {
   const cache = CacheService.getScriptCache();
   if (cache.get(`idempo:${key}`)) {
-    Logger.log(`Skip: ${key}`);
+    console.log(`Skip: ${key}`);
     return { skipped: true };
   }
 
@@ -120,13 +120,13 @@ function pasangSemuaTrigger() {
   ScriptApp.newTrigger("harianReport")
     .timeBased().atHour(7).everyDays(1).create();
 
-  Logger.log("Trigger dipasang.");
+  console.log("Trigger dipasang.");
 }
 
 function hapusSemuaTrigger() {
   const triggers = ScriptApp.getProjectTriggers();
   triggers.forEach((t) => ScriptApp.deleteTrigger(t));
-  Logger.log(`${triggers.length} trigger dihapus.`);
+  console.log(`${triggers.length} trigger dihapus.`);
 }
 
 
@@ -201,5 +201,5 @@ function validasiConfig() {
     throw new Error(`MASTER_SHEET_ID tidak bisa dibuka: ${err.message}`);
   }
 
-  Logger.log("✓ Config valid.");
+  console.log("✓ Config valid.");
 }

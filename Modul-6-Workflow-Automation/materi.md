@@ -123,7 +123,7 @@ function pasangTriggerHarian() {
 
 function listTrigger() {
   ScriptApp.getProjectTriggers().forEach((t) => {
-    Logger.log(`${t.getHandlerFunction()} | ${t.getTriggerSource()} | ${t.getEventType()}`);
+    console.log(`${t.getHandlerFunction()} | ${t.getTriggerSource()} | ${t.getEventType()}`);
   });
 }
 ```
@@ -246,7 +246,7 @@ function pasangTriggerKalender() {
 }
 
 function onEventCalendar(e) {
-  Logger.log("Calendar event updated: " + e.calendarId);
+  console.log("Calendar event updated: " + e.calendarId);
   // Sinkron ke Sheet, dll
 }
 ```
@@ -273,7 +273,7 @@ function syncIncremental() {
   const lastRun = props.getProperty("lastSyncTime");
   const now     = new Date();
 
-  Logger.log(`Last sync: ${lastRun || "(belum pernah)"}`);
+  console.log(`Last sync: ${lastRun || "(belum pernah)"}`);
 
   // ... lakukan sync data sejak lastRun
 
@@ -298,7 +298,7 @@ Kalau trigger time-driven `everyMinutes(1)` dan eksekusi #1 belum selesai sebelu
 function syncDataAman() {
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(10000)) {   // tunggu max 10 detik
-    Logger.log("Sync lain sedang jalan. Skip.");
+    console.log("Sync lain sedang jalan. Skip.");
     return;
   }
 

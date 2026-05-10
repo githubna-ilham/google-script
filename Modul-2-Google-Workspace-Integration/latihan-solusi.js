@@ -21,14 +21,14 @@ function inventarisFolder() {
   });
 
   // Log struktur
-  Logger.log(`${folder.getName()}/`);
+  console.log(`${folder.getName()}/`);
   const subFolders = folder.getFolders();
   while (subFolders.hasNext()) {
     const sf = subFolders.next();
     let count = 0;
     const files = sf.getFiles();
     while (files.hasNext()) { files.next(); count++; }
-    Logger.log(`  ${sf.getName()}/  → ${count} file`);
+    console.log(`  ${sf.getName()}/  → ${count} file`);
   }
 }
 
@@ -48,13 +48,13 @@ function auditFileLama(thresholdHari) {
   const files = DriveApp.searchFiles(query);
 
   let counter = 0;
-  Logger.log(`File yang tidak diupdate sejak ${tanggalQuery}:`);
+  console.log(`File yang tidak diupdate sejak ${tanggalQuery}:`);
   while (files.hasNext() && counter < 20) {
     const f = files.next();
-    Logger.log(`  ${f.getName()} | ${f.getMimeType()} | ${f.getLastUpdated().toLocaleDateString("id-ID")}`);
+    console.log(`  ${f.getName()} | ${f.getMimeType()} | ${f.getLastUpdated().toLocaleDateString("id-ID")}`);
     counter++;
   }
-  Logger.log(`Total ditampilkan: ${counter} (dibatasi maks 20)`);
+  console.log(`Total ditampilkan: ${counter} (dibatasi maks 20)`);
 }
 
 
@@ -83,7 +83,7 @@ function generateSuratMassal() {
     body.replaceText("\\{\\{nominal\\}\\}", p.nominal);
 
     doc.saveAndClose();
-    Logger.log(`✓ ${p.nama} → ${doc.getUrl()}`);
+    console.log(`✓ ${p.nama} → ${doc.getUrl()}`);
   });
 }
 
@@ -129,7 +129,7 @@ function bikinLaporanHarian() {
   // Pindah ke folder
   DriveApp.getFileById(doc.getId()).moveTo(DriveApp.getFolderById(FOLDER_ID));
 
-  Logger.log("Doc: " + doc.getUrl());
+  console.log("Doc: " + doc.getUrl());
   return doc;
 }
 
@@ -145,7 +145,7 @@ function bikinLaporanDanPDF() {
   const folder = DriveApp.getFolderById(FOLDER_ID);
   const pdfFile = folder.createFile(pdfBlob).setName(doc.getName() + ".pdf");
 
-  Logger.log("PDF: " + pdfFile.getUrl());
+  console.log("PDF: " + pdfFile.getUrl());
 }
 
 
@@ -167,7 +167,7 @@ function bikinLibur() {
     cal.createAllDayEvent(h.judul, tgl, {
       description: "Dibuat otomatis lewat Apps Script"
     });
-    Logger.log(`✓ ${h.judul} pada ${tgl.toLocaleDateString("id-ID")}`);
+    console.log(`✓ ${h.judul} pada ${tgl.toLocaleDateString("id-ID")}`);
   });
 }
 
@@ -181,12 +181,12 @@ function cekBentrok(mulaiISO, selesaiISO) {
   const events = cal.getEvents(mulai, selesai);
 
   if (events.length === 0) {
-    Logger.log("✓ Bebas — tidak ada event yang bentrok.");
+    console.log("✓ Bebas — tidak ada event yang bentrok.");
     return false;
   }
 
-  Logger.log(`⚠ Bentrok dengan ${events.length} event:`);
-  events.forEach((e) => Logger.log(`  - ${e.getTitle()}`));
+  console.log(`⚠ Bentrok dengan ${events.length} event:`);
+  events.forEach((e) => console.log(`  - ${e.getTitle()}`));
   return true;
 }
 
@@ -202,7 +202,7 @@ function bookingStandup(judul, mulaiISO, selesaiISO) {
     .filter((e) => e.getTitle() === judul);
 
   if (existing.length > 0) {
-    Logger.log(`ℹ Sudah ada event: ${judul}`);
+    console.log(`ℹ Sudah ada event: ${judul}`);
     return existing[0];
   }
 
@@ -238,8 +238,8 @@ function bookingStandup(judul, mulaiISO, selesaiISO) {
     description: `Notulen: ${doc.getUrl()}`
   });
 
-  Logger.log(`✓ Berhasil booking: ${event.getId()}`);
-  Logger.log(`  Doc: ${doc.getUrl()}`);
+  console.log(`✓ Berhasil booking: ${event.getId()}`);
+  console.log(`  Doc: ${doc.getUrl()}`);
   return event;
 }
 

@@ -15,16 +15,16 @@
 
 function listTrigger() {
   const triggers = ScriptApp.getProjectTriggers();
-  Logger.log(`Total trigger aktif: ${triggers.length}`);
+  console.log(`Total trigger aktif: ${triggers.length}`);
   triggers.forEach((t) => {
-    Logger.log(`  ${t.getHandlerFunction()} | ${t.getTriggerSource()} | ${t.getEventType()}`);
+    console.log(`  ${t.getHandlerFunction()} | ${t.getTriggerSource()} | ${t.getEventType()}`);
   });
 }
 
 function hapusSemuaTrigger() {
   const triggers = ScriptApp.getProjectTriggers();
   triggers.forEach((t) => ScriptApp.deleteTrigger(t));
-  Logger.log(`${triggers.length} trigger dihapus.`);
+  console.log(`${triggers.length} trigger dihapus.`);
 }
 
 function hapusTriggerBernama(handlerName) {
@@ -35,7 +35,7 @@ function hapusTriggerBernama(handlerName) {
       count++;
     }
   });
-  Logger.log(`${count} trigger '${handlerName}' dihapus.`);
+  console.log(`${count} trigger '${handlerName}' dihapus.`);
 }
 
 
@@ -50,7 +50,7 @@ function pasangTriggerHarian() {
     .atHour(7)
     .everyDays(1)
     .create();
-  Logger.log("Trigger harian jam 7 dipasang.");
+  console.log("Trigger harian jam 7 dipasang.");
 }
 
 function pasangTriggerTiap15Menit() {
@@ -59,7 +59,7 @@ function pasangTriggerTiap15Menit() {
     .timeBased()
     .everyMinutes(15)
     .create();
-  Logger.log("Trigger tiap 15 menit dipasang.");
+  console.log("Trigger tiap 15 menit dipasang.");
 }
 
 function pasangTriggerSenin() {
@@ -69,7 +69,7 @@ function pasangTriggerSenin() {
     .onWeekDay(ScriptApp.WeekDay.MONDAY)
     .atHour(8)
     .create();
-  Logger.log("Trigger Senin jam 8 dipasang.");
+  console.log("Trigger Senin jam 8 dipasang.");
 }
 
 
@@ -89,16 +89,16 @@ function kirimLaporanHarian() {
     body: "Ini laporan harian otomatis."
   });
 
-  Logger.log("Laporan harian dikirim.");
+  console.log("Laporan harian dikirim.");
 }
 
 function checkInbox() {
   const threads = GmailApp.search("is:unread newer_than:30m", 0, 5);
-  Logger.log(`[${new Date().toISOString()}] ${threads.length} email baru.`);
+  console.log(`[${new Date().toISOString()}] ${threads.length} email baru.`);
 }
 
 function laporanMingguan() {
-  Logger.log(`[${new Date().toISOString()}] Laporan mingguan jalan.`);
+  console.log(`[${new Date().toISOString()}] Laporan mingguan jalan.`);
 }
 
 
@@ -112,7 +112,7 @@ function pasangTriggerEdit() {
     .forSpreadsheet(SpreadsheetApp.getActive())
     .onEdit()
     .create();
-  Logger.log("Trigger onEdit dipasang.");
+  console.log("Trigger onEdit dipasang.");
 }
 
 function onEditWithMail(e) {
@@ -143,8 +143,8 @@ function syncIncremental() {
   const lastRun = props.getProperty("lastSyncTime");
   const now = new Date();
 
-  Logger.log(`Last sync: ${lastRun || "(belum pernah)"}`);
-  Logger.log(`Sync sekarang: ${now.toISOString()}`);
+  console.log(`Last sync: ${lastRun || "(belum pernah)"}`);
+  console.log(`Sync sekarang: ${now.toISOString()}`);
 
   // Simulasi proses (ganti dengan logic asli — query Gmail since lastRun, dll)
   // ...
@@ -154,7 +154,7 @@ function syncIncremental() {
 
 function resetState() {
   PropertiesService.getScriptProperties().deleteAllProperties();
-  Logger.log("State direset.");
+  console.log("State direset.");
 }
 
 
@@ -165,14 +165,14 @@ function resetState() {
 function syncAman() {
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(10000)) {
-    Logger.log("Sync lain sedang berjalan. Skip.");
+    console.log("Sync lain sedang berjalan. Skip.");
     return;
   }
 
   try {
-    Logger.log("Mulai sync...");
+    console.log("Mulai sync...");
     Utilities.sleep(2000);   // simulasi pekerjaan
-    Logger.log("Sync selesai.");
+    console.log("Sync selesai.");
   } finally {
     lock.releaseLock();
   }
@@ -195,7 +195,7 @@ function pasangTriggerKontrak() {
     .atHour(7)
     .everyDays(1)
     .create();
-  Logger.log("Trigger kontrak harian dipasang.");
+  console.log("Trigger kontrak harian dipasang.");
 }
 
 function reminderKontrakHarian() {
@@ -203,7 +203,7 @@ function reminderKontrakHarian() {
   const MANAGER_EMAIL = Session.getActiveUser().getEmail();
 
   if (SHEET_ID === "GANTI_DENGAN_ID_SHEET_KONTRAK") {
-    Logger.log("Set SHEET_ID dulu.");
+    console.log("Set SHEET_ID dulu.");
     return;
   }
 
@@ -250,5 +250,5 @@ function reminderKontrakHarian() {
   }
 
   range.setValues(data);
-  Logger.log(`${kirim} reminder dikirim.`);
+  console.log(`${kirim} reminder dikirim.`);
 }

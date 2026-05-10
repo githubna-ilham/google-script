@@ -173,7 +173,7 @@ function ambilCuaca(kota) {
   const data = JSON.parse(respon.getContentText());
 
   const cuaca = data.current_condition[0];
-  Logger.log(`${kota}: ${cuaca.temp_C}°C, ${cuaca.weatherDesc[0].value}`);
+  console.log(`${kota}: ${cuaca.temp_C}°C, ${cuaca.weatherDesc[0].value}`);
 }
 ```
 
@@ -189,8 +189,8 @@ function kirimKeWebhook(payload) {
   };
 
   const respon = UrlFetchApp.fetch("https://hooks.slack.com/services/...", opsi);
-  Logger.log(`Status: ${respon.getResponseCode()}`);
-  Logger.log(`Body: ${respon.getContentText()}`);
+  console.log(`Status: ${respon.getResponseCode()}`);
+  console.log(`Body: ${respon.getContentText()}`);
 }
 ```
 
@@ -221,7 +221,7 @@ const opsi2 = {
 ```javascript
 function setApiKey() {
   PropertiesService.getScriptProperties().setProperty("API_KEY", "rahasia123");
-  Logger.log("Key tersimpan.");
+  console.log("Key tersimpan.");
 }
 
 function panggilApi() {
@@ -319,7 +319,7 @@ function setWebhook() {
   const r = UrlFetchApp.fetch(
     `https://api.telegram.org/bot${BOT_TOKEN}/setWebhook?url=${encodeURIComponent(URL)}`
   );
-  Logger.log(r.getContentText());
+  console.log(r.getContentText());
 }
 ```
 

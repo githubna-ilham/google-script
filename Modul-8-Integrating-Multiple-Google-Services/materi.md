@@ -70,11 +70,11 @@ function ambilDataKurs() {
   const cache = CacheService.getScriptCache();
   const cached = cache.get("kurs");
   if (cached) {
-    Logger.log("Cache hit!");
+    console.log("Cache hit!");
     return JSON.parse(cached);
   }
 
-  Logger.log("Cache miss, fetching...");
+  console.log("Cache miss, fetching...");
   const r = UrlFetchApp.fetch("https://api.exchangerate-api.com/v4/latest/USD");
   const data = JSON.parse(r.getContentText());
 
@@ -248,7 +248,7 @@ function onboardingHandlerIdempotent(e) {
 
   const cache = CacheService.getScriptCache();
   if (cache.get(`onboarding:${responseId}`)) {
-    Logger.log("Sudah diproses. Skip.");
+    console.log("Sudah diproses. Skip.");
     return;
   }
 

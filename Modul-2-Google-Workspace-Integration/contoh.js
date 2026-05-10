@@ -24,14 +24,14 @@ const TEMPLATE_ID = "GANTI_DENGAN_ID_DOC_TEMPLATE";
 function contoh01_listFolderAktif() {
   // Ambil My Drive root
   const root = DriveApp.getRootFolder();
-  Logger.log("Root folder: " + root.getName());
+  console.log("Root folder: " + root.getName());
 
   // Iterasi 5 folder pertama saja supaya tidak terlalu panjang
   const folders = root.getFolders();
   let counter = 0;
   while (folders.hasNext() && counter < 5) {
     const f = folders.next();
-    Logger.log(`📁 ${f.getName()}`);
+    console.log(`📁 ${f.getName()}`);
     counter++;
   }
 }
@@ -44,7 +44,7 @@ function contoh02_buatStrukturFolder() {
     induk.createFolder(nama);
   });
 
-  Logger.log("Struktur folder dibuat: " + induk.getUrl());
+  console.log("Struktur folder dibuat: " + induk.getUrl());
 }
 
 function contoh03_buatFileTeks() {
@@ -54,7 +54,7 @@ function contoh03_buatFileTeks() {
     "Halo dari Apps Script — file ini dibuat secara otomatis.",
     "text/plain"
   );
-  Logger.log("File: " + file.getUrl());
+  console.log("File: " + file.getUrl());
 }
 
 function contoh04_searchPDF() {
@@ -64,10 +64,10 @@ function contoh04_searchPDF() {
   let counter = 0;
   while (files.hasNext() && counter < 10) {
     const f = files.next();
-    Logger.log(`${f.getName()} — ${f.getLastUpdated().toLocaleDateString("id-ID")}`);
+    console.log(`${f.getName()} — ${f.getLastUpdated().toLocaleDateString("id-ID")}`);
     counter++;
   }
-  Logger.log("Menampilkan 10 PDF teratas (kalau ada).");
+  console.log("Menampilkan 10 PDF teratas (kalau ada).");
 }
 
 function contoh05_copyFileBatch() {
@@ -79,7 +79,7 @@ function contoh05_copyFileBatch() {
     sumber.makeCopy(`salinan-${i}.txt`, folder);
   }
 
-  Logger.log("3 salinan dibuat di folder: " + folder.getUrl());
+  console.log("3 salinan dibuat di folder: " + folder.getUrl());
 }
 
 
@@ -104,7 +104,7 @@ function contoh06_buatDocBaru() {
   body.appendParagraph("Catatan").setHeading(DocumentApp.ParagraphHeading.HEADING2);
   body.appendParagraph("Dokumen ini bisa di-export ke PDF lewat menu File → Download.");
 
-  Logger.log("Doc dibuat: " + doc.getUrl());
+  console.log("Doc dibuat: " + doc.getUrl());
 }
 
 function contoh07_replaceTextDariTemplate() {
@@ -112,7 +112,7 @@ function contoh07_replaceTextDariTemplate() {
   // Template harus berisi placeholder {{nama}}, {{tanggal}}, {{nominal}}.
 
   if (TEMPLATE_ID === "GANTI_DENGAN_ID_DOC_TEMPLATE") {
-    Logger.log("Set TEMPLATE_ID dulu di atas.");
+    console.log("Set TEMPLATE_ID dulu di atas.");
     return;
   }
 
@@ -132,20 +132,20 @@ function contoh07_replaceTextDariTemplate() {
   });
 
   doc.saveAndClose();
-  Logger.log("Surat siap: " + doc.getUrl());
+  console.log("Surat siap: " + doc.getUrl());
 }
 
 function contoh08_exportDocKePDF() {
   // Ambil Doc paling baru di FOLDER_ID, lalu export jadi PDF.
   if (FOLDER_ID === "GANTI_DENGAN_ID_FOLDER_ANDA") {
-    Logger.log("Set FOLDER_ID dulu di atas.");
+    console.log("Set FOLDER_ID dulu di atas.");
     return;
   }
 
   const folder = DriveApp.getFolderById(FOLDER_ID);
   const docs = folder.getFilesByType(MimeType.GOOGLE_DOCS);
   if (!docs.hasNext()) {
-    Logger.log("Tidak ada Google Doc di folder.");
+    console.log("Tidak ada Google Doc di folder.");
     return;
   }
 
@@ -153,7 +153,7 @@ function contoh08_exportDocKePDF() {
   const pdfBlob = doc.getAs(MimeType.PDF);
   const pdfFile = folder.createFile(pdfBlob).setName(doc.getName() + ".pdf");
 
-  Logger.log("PDF: " + pdfFile.getUrl());
+  console.log("PDF: " + pdfFile.getUrl());
 }
 
 
@@ -173,8 +173,8 @@ function contoh09_buatEventSederhana() {
     location: "Online"
   });
 
-  Logger.log("Event ID: " + event.getId());
-  Logger.log("Mulai   : " + mulai.toLocaleString("id-ID"));
+  console.log("Event ID: " + event.getId());
+  console.log("Mulai   : " + mulai.toLocaleString("id-ID"));
 }
 
 function contoh10_buatEventAllDay() {
@@ -187,17 +187,17 @@ function contoh10_buatEventAllDay() {
     description: "Event seharian dari Apps Script."
   });
 
-  Logger.log("All-day event dibuat untuk: " + besok.toLocaleDateString("id-ID"));
+  console.log("All-day event dibuat untuk: " + besok.toLocaleDateString("id-ID"));
 }
 
 function contoh11_eventHariIni() {
   const cal = CalendarApp.getDefaultCalendar();
   const events = cal.getEventsForDay(new Date());
 
-  Logger.log(`Anda punya ${events.length} event hari ini:`);
+  console.log(`Anda punya ${events.length} event hari ini:`);
   events.forEach((e) => {
     const jam = e.getStartTime().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
-    Logger.log(`  ${jam} — ${e.getTitle()}`);
+    console.log(`  ${jam} — ${e.getTitle()}`);
   });
 }
 
@@ -216,7 +216,7 @@ function contoh12_eventBerulang() {
     .times(4);
 
   const series = cal.createEventSeries("Standup Demo (4x)", besok, selesai, recurrence);
-  Logger.log("Event series ID: " + series.getId());
+  console.log("Event series ID: " + series.getId());
 }
 
 
@@ -260,9 +260,9 @@ function contoh13_rapatDenganNotulen() {
     sendInvites: false   // false supaya tidak spam saat demo
   });
 
-  Logger.log("=== Selesai ===");
-  Logger.log("Event: " + event.getId());
-  Logger.log("Doc  : " + doc.getUrl());
+  console.log("=== Selesai ===");
+  console.log("Event: " + event.getId());
+  console.log("Doc  : " + doc.getUrl());
 }
 
 
@@ -272,9 +272,9 @@ function contoh13_rapatDenganNotulen() {
  * ========================================================================= */
 
 function jalankanDemoAman() {
-  Logger.log("=== contoh01 ===");
+  console.log("=== contoh01 ===");
   contoh01_listFolderAktif();
 
-  Logger.log("\n=== contoh11 ===");
+  console.log("\n=== contoh11 ===");
   contoh11_eventHariIni();
 }

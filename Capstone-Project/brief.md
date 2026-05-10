@@ -165,7 +165,7 @@ Project Anda **wajib** mencakup minimal:
 
 ## Tip & Strategi
 
-1. **Mulai dari skeleton** — bikin trigger + 1 stub function yang Logger.log sukses, baru iterasi tambah fitur.
+1. **Mulai dari skeleton** — bikin trigger + 1 stub function yang console.log sukses, baru iterasi tambah fitur.
 2. **Testing sebagai diri sendiri** — pakai email Anda sebagai semua role (karyawan, manager, admin) supaya gampang verifikasi.
 3. **Audit log dari awal** — bikin `audit_log()` sejak commit pertama, jangan tinggalkan untuk akhir.
 4. **Idempotent dari awal** — kalau Anda bisa run handler dua kali tanpa duplikat, debugging jadi gampang.

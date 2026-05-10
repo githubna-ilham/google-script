@@ -17,11 +17,11 @@ function contoh01_variabel() {
   const nama = "Budi";
   let umur = 25;
 
-  Logger.log("Nama: " + nama);
-  Logger.log("Umur sekarang: " + umur);
+  console.log("Nama: " + nama);
+  console.log("Umur sekarang: " + umur);
 
   umur = 26;
-  Logger.log("Umur tahun depan: " + umur);
+  console.log("Umur tahun depan: " + umur);
 
   // Mencoba mengubah const akan error — uncomment untuk membuktikan:
   // nama = "Andi";
@@ -34,29 +34,29 @@ function contoh02_tipeData() {
   const kosong = null;
   let belumDiisi;
 
-  Logger.log("teks: %s (%s)", teks, typeof teks);
-  Logger.log("angka: %s (%s)", angka, typeof angka);
-  Logger.log("benar: %s (%s)", benar, typeof benar);
-  Logger.log("kosong: %s (%s)", kosong, typeof kosong);
-  Logger.log("belumDiisi: %s (%s)", belumDiisi, typeof belumDiisi);
+  console.log("teks: %s (%s)", teks, typeof teks);
+  console.log("angka: %s (%s)", angka, typeof angka);
+  console.log("benar: %s (%s)", benar, typeof benar);
+  console.log("kosong: %s (%s)", kosong, typeof kosong);
+  console.log("belumDiisi: %s (%s)", belumDiisi, typeof belumDiisi);
 }
 
 function contoh03_operator() {
   // Aritmatika
-  Logger.log("10 + 3 = " + (10 + 3));
-  Logger.log("10 / 3 = " + (10 / 3));
-  Logger.log("10 % 3 = " + (10 % 3));   // sisa bagi
-  Logger.log("2 ** 8 = " + (2 ** 8));   // pangkat
+  console.log("10 + 3 = " + (10 + 3));
+  console.log("10 / 3 = " + (10 / 3));
+  console.log("10 % 3 = " + (10 % 3));   // sisa bagi
+  console.log("2 ** 8 = " + (2 ** 8));   // pangkat
 
   // Perbandingan — selalu pakai === bukan ==
-  Logger.log("2 == '2'  → " + (2 == "2"));    // true (menyesatkan)
-  Logger.log("2 === '2' → " + (2 === "2"));   // false (jelas)
+  console.log("2 == '2'  → " + (2 == "2"));    // true (menyesatkan)
+  console.log("2 === '2' → " + (2 === "2"));   // false (jelas)
 
   // Logika
   const lulusTeori = true;
   const lulusPraktek = false;
-  Logger.log("Lulus semua? " + (lulusTeori && lulusPraktek));
-  Logger.log("Lulus salah satu? " + (lulusTeori || lulusPraktek));
+  console.log("Lulus semua? " + (lulusTeori && lulusPraktek));
+  console.log("Lulus salah satu? " + (lulusTeori || lulusPraktek));
 }
 
 function contoh04_templateLiteral() {
@@ -69,8 +69,8 @@ function contoh04_templateLiteral() {
   // Template literal — disarankan
   const pesan2 = `Halo ${nama}, umur Anda ${umur} tahun.`;
 
-  Logger.log(pesan1);
-  Logger.log(pesan2);
+  console.log(pesan1);
+  console.log(pesan2);
 }
 
 
@@ -92,13 +92,13 @@ function contoh05_ifElse() {
     grade = "Tidak lulus";
   }
 
-  Logger.log(`Nilai ${nilai} → Grade ${grade}`);
+  console.log(`Nilai ${nilai} → Grade ${grade}`);
 }
 
 function contoh06_ternary() {
   const umur = 20;
   const status = umur >= 17 ? "Dewasa" : "Anak-anak";
-  Logger.log(`Status: ${status}`);
+  console.log(`Status: ${status}`);
 }
 
 function contoh07_switch() {
@@ -115,29 +115,29 @@ function contoh07_switch() {
     }
   }
 
-  Logger.log(namaHari(3));   // Rabu
-  Logger.log(namaHari(9));   // Hari tidak dikenal
+  console.log(namaHari(3));   // Rabu
+  console.log(namaHari(9));   // Hari tidak dikenal
 }
 
 function contoh08_forLoop() {
-  Logger.log("Hitung 1 sampai 5:");
+  console.log("Hitung 1 sampai 5:");
   for (let i = 1; i <= 5; i++) {
-    Logger.log(i);
+    console.log(i);
   }
 
-  Logger.log("Tabel perkalian 7:");
+  console.log("Tabel perkalian 7:");
   for (let i = 1; i <= 10; i++) {
-    Logger.log(`7 x ${i} = ${7 * i}`);
+    console.log(`7 x ${i} = ${7 * i}`);
   }
 }
 
 function contoh09_whileLoop() {
   let n = 5;
   while (n > 0) {
-    Logger.log(`Hitung mundur: ${n}`);
+    console.log(`Hitung mundur: ${n}`);
     n--;   // jangan lupa kurangi, kalau tidak infinite loop
   }
-  Logger.log("Selesai!");
+  console.log("Selesai!");
 }
 
 
@@ -150,8 +150,8 @@ function contoh10_functionDasar() {
     return `Halo, ${nama}!`;
   }
 
-  Logger.log(sapa("Budi"));
-  Logger.log(sapa("Sari"));
+  console.log(sapa("Budi"));
+  console.log(sapa("Sari"));
 }
 
 function contoh11_parameterBanyak() {
@@ -163,8 +163,8 @@ function contoh11_parameterBanyak() {
     return beratKg / (tinggiM * tinggiM);
   }
 
-  Logger.log("Luas: " + hitungLuasPersegiPanjang(5, 3));
-  Logger.log("BMI : " + hitungBMI(65, 1.70).toFixed(2));
+  console.log("Luas: " + hitungLuasPersegiPanjang(5, 3));
+  console.log("BMI : " + hitungBMI(65, 1.70).toFixed(2));
 }
 
 function contoh12_arrowFunction() {
@@ -172,9 +172,9 @@ function contoh12_arrowFunction() {
   const kuadrat = (n) => n * n;
   const sapa = (nama) => `Halo, ${nama}!`;
 
-  Logger.log(tambah(3, 4));
-  Logger.log(kuadrat(9));
-  Logger.log(sapa("Tina"));
+  console.log(tambah(3, 4));
+  console.log(kuadrat(9));
+  console.log(sapa("Tina"));
 }
 
 
@@ -185,29 +185,29 @@ function contoh12_arrowFunction() {
 function contoh13_arrayDasar() {
   const buah = ["apel", "jeruk", "mangga"];
 
-  Logger.log("Buah pertama: " + buah[0]);
-  Logger.log("Jumlah buah: " + buah.length);
+  console.log("Buah pertama: " + buah[0]);
+  console.log("Jumlah buah: " + buah.length);
 
   buah.push("pisang");
-  Logger.log("Setelah push: " + buah.join(", "));
+  console.log("Setelah push: " + buah.join(", "));
 
   buah.pop();
-  Logger.log("Setelah pop: " + buah.join(", "));
+  console.log("Setelah pop: " + buah.join(", "));
 }
 
 function contoh14_iterasiArray() {
   const angka = [10, 20, 30, 40, 50];
 
   // forEach dengan arrow function
-  Logger.log("--- forEach ---");
+  console.log("--- forEach ---");
   angka.forEach((nilai, index) => {
-    Logger.log(`Index ${index}: ${nilai}`);
+    console.log(`Index ${index}: ${nilai}`);
   });
 
   // for klasik
-  Logger.log("--- for klasik ---");
+  console.log("--- for klasik ---");
   for (let i = 0; i < angka.length; i++) {
-    Logger.log(`angka[${i}] = ${angka[i]}`);
+    console.log(`angka[${i}] = ${angka[i]}`);
   }
 }
 
@@ -215,17 +215,17 @@ function contoh15_methodArray() {
   const nilai = [78, 55, 90, 42, 88];
 
   const lulus = nilai.filter((n) => n >= 70);
-  Logger.log("Lulus: " + lulus.join(", "));
+  console.log("Lulus: " + lulus.join(", "));
 
   const naikSatu = nilai.map((n) => n + 1);
-  Logger.log("Naik 1: " + naikSatu.join(", "));
+  console.log("Naik 1: " + naikSatu.join(", "));
 
   const total = nilai.reduce((a, b) => a + b, 0);
   const ratarata = total / nilai.length;
-  Logger.log(`Total: ${total}, Rata-rata: ${ratarata}`);
+  console.log(`Total: ${total}, Rata-rata: ${ratarata}`);
 
   const adaSembilanPuluh = nilai.includes(90);
-  Logger.log("Ada nilai 90? " + adaSembilanPuluh);
+  console.log("Ada nilai 90? " + adaSembilanPuluh);
 }
 
 
@@ -241,14 +241,14 @@ function contoh16_objectDasar() {
     aktif: true
   };
 
-  Logger.log("Nama   : " + karyawan.nama);
-  Logger.log("Divisi : " + karyawan["divisi"]);
+  console.log("Nama   : " + karyawan.nama);
+  console.log("Divisi : " + karyawan["divisi"]);
 
   karyawan.umur = 29;
   karyawan.email = "sari@kantor.id";
 
-  Logger.log("Setelah update:");
-  Logger.log(JSON.stringify(karyawan));
+  console.log("Setelah update:");
+  console.log(JSON.stringify(karyawan));
 }
 
 function contoh17_arrayOfObjects() {
@@ -263,18 +263,18 @@ function contoh17_arrayOfObjects() {
   const totalGaji = daftarKaryawan
     .map((k) => k.gaji)
     .reduce((a, b) => a + b, 0);
-  Logger.log("Total gaji: " + totalGaji.toLocaleString("id-ID"));
+  console.log("Total gaji: " + totalGaji.toLocaleString("id-ID"));
 
   // Karyawan divisi Finance
   const finance = daftarKaryawan.filter((k) => k.divisi === "Finance");
-  Logger.log(`Karyawan Finance: ${finance.length} orang`);
-  finance.forEach((k) => Logger.log(`  - ${k.nama}`));
+  console.log(`Karyawan Finance: ${finance.length} orang`);
+  finance.forEach((k) => console.log(`  - ${k.nama}`));
 
   // Karyawan dengan gaji tertinggi
   const tertinggi = daftarKaryawan.reduce((max, k) =>
     k.gaji > max.gaji ? k : max
   );
-  Logger.log(`Gaji tertinggi: ${tertinggi.nama} (${tertinggi.gaji.toLocaleString("id-ID")})`);
+  console.log(`Gaji tertinggi: ${tertinggi.nama} (${tertinggi.gaji.toLocaleString("id-ID")})`);
 }
 
 
@@ -304,7 +304,7 @@ function jalankanSemua() {
   ];
 
   semua.forEach((fn, i) => {
-    Logger.log(`\n========== ${i + 1}. ${fn.name} ==========`);
+    console.log(`\n========== ${i + 1}. ${fn.name} ==========`);
     fn();
   });
 }

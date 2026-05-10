@@ -45,11 +45,11 @@ function statistikPenjualan() {
   });
   const topProduk = Object.entries(produkQty).sort((a, b) => b[1] - a[1])[0];
 
-  Logger.log(`Total transaksi: ${total}`);
-  Logger.log(`Transaksi Selesai: ${selesai.length}`);
-  Logger.log(`Total nilai (Selesai): Rp ${totalNilai.toLocaleString("id-ID")}`);
-  Logger.log(`Top customer: ${topCustomer[0]} (${topCustomer[1]} transaksi)`);
-  Logger.log(`Top produk : ${topProduk[0]} (${topProduk[1]} qty)`);
+  console.log(`Total transaksi: ${total}`);
+  console.log(`Transaksi Selesai: ${selesai.length}`);
+  console.log(`Total nilai (Selesai): Rp ${totalNilai.toLocaleString("id-ID")}`);
+  console.log(`Top customer: ${topCustomer[0]} (${topCustomer[1]} transaksi)`);
+  console.log(`Top produk : ${topProduk[0]} (${topProduk[1]} qty)`);
 }
 
 
@@ -78,7 +78,7 @@ function tambahKolomSubtotal() {
   }
   sheet.getDataRange().setValues(data);
   sheet.getRange(2, colSub, lastRow - 1, 1).setNumberFormat('"Rp" #,##0');
-  Logger.log("Kolom Subtotal terisi & diformat.");
+  console.log("Kolom Subtotal terisi & diformat.");
 }
 
 
@@ -123,7 +123,7 @@ function validasiStok() {
 
   shPenj.getDataRange().setValues(dataPenj);
   shProd.getDataRange().setValues(dataProd);
-  Logger.log("Validasi stok selesai.");
+  console.log("Validasi stok selesai.");
 }
 
 
@@ -170,7 +170,7 @@ function exportSelesaiKeSheetBaru() {
     dst.getRange(2, 1, newRows.length, newHeaders.length).setValues(newRows);
   }
 
-  Logger.log(`Export selesai → tab "${namaTab}" (${newRows.length} baris).`);
+  console.log(`Export selesai → tab "${namaTab}" (${newRows.length} baris).`);
 }
 
 
@@ -220,7 +220,7 @@ function kirimNotifSelesai() {
   }
 
   range.setValues(data);
-  Logger.log(`${terkirim} email dikirim.`);
+  console.log(`${terkirim} email dikirim.`);
 }
 
 
@@ -284,5 +284,5 @@ function bangunDashboard() {
   }
 
   dash.autoResizeColumns(1, 2);
-  Logger.log("Dashboard di-update.");
+  console.log("Dashboard di-update.");
 }

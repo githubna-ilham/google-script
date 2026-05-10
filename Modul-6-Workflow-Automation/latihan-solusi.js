@@ -28,9 +28,9 @@ function onOpen() {
 
 function listTrigger() {
   const triggers = ScriptApp.getProjectTriggers();
-  Logger.log(`Total: ${triggers.length}`);
+  console.log(`Total: ${triggers.length}`);
   triggers.forEach((t) => {
-    Logger.log(`  ${t.getHandlerFunction()} | ${t.getEventType()}`);
+    console.log(`  ${t.getHandlerFunction()} | ${t.getEventType()}`);
   });
 }
 
@@ -50,11 +50,11 @@ function pasangTriggerSenin() {
   _hapusTriggerBernama("kirimLaporanSenin");
   ScriptApp.newTrigger("kirimLaporanSenin")
     .timeBased().onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(8).create();
-  Logger.log("Trigger Senin jam 8 dipasang.");
+  console.log("Trigger Senin jam 8 dipasang.");
 }
 
 function kirimLaporanSenin() {
-  Logger.log("Laporan Senin dijalankan: " + new Date().toISOString());
+  console.log("Laporan Senin dijalankan: " + new Date().toISOString());
 }
 
 
@@ -63,7 +63,7 @@ function pasangReminderTugas() {
   _hapusTriggerBernama("reminderTugasBesok");
   ScriptApp.newTrigger("reminderTugasBesok")
     .timeBased().atHour(18).everyDays(1).create();
-  Logger.log("Trigger reminder tugas dipasang (18:00).");
+  console.log("Trigger reminder tugas dipasang (18:00).");
 }
 
 function reminderTugasBesok() {
@@ -73,7 +73,7 @@ function reminderTugasBesok() {
   );
 
   if (props.getProperty(todayKey)) {
-    Logger.log("Sudah dikirim hari ini. Skip.");
+    console.log("Sudah dikirim hari ini. Skip.");
     return;
   }
 
@@ -99,7 +99,7 @@ function reminderTugasBesok() {
   }
 
   if (tugas.length === 0) {
-    Logger.log("Tidak ada tugas besok. Skip.");
+    console.log("Tidak ada tugas besok. Skip.");
     return;
   }
 
@@ -119,7 +119,7 @@ function reminderTugasBesok() {
   });
 
   props.setProperty(todayKey, "1");
-  Logger.log(`${tugas.length} tugas dikirim sebagai reminder.`);
+  console.log(`${tugas.length} tugas dikirim sebagai reminder.`);
 }
 
 
@@ -129,7 +129,7 @@ function pasangTriggerEdit() {
   ScriptApp.newTrigger("onEditAutoFormat")
     .forSpreadsheet(SpreadsheetApp.getActive())
     .onEdit().create();
-  Logger.log("Trigger onEdit dipasang.");
+  console.log("Trigger onEdit dipasang.");
 }
 
 function onEditAutoFormat(e) {
@@ -161,14 +161,14 @@ function onEditAutoFormat(e) {
 function pasangTriggerForm() {
   const FORM_ID = "GANTI_DENGAN_FORM_ID";
   if (FORM_ID === "GANTI_DENGAN_FORM_ID") {
-    Logger.log("Set FORM_ID dulu.");
+    console.log("Set FORM_ID dulu.");
     return;
   }
   _hapusTriggerBernama("prosesPertanyaan");
   ScriptApp.newTrigger("prosesPertanyaan")
     .forForm(FormApp.openById(FORM_ID))
     .onFormSubmit().create();
-  Logger.log("Trigger form dipasang.");
+  console.log("Trigger form dipasang.");
 }
 
 function prosesPertanyaan(e) {
@@ -201,7 +201,7 @@ function prosesPertanyaan(e) {
     body: JSON.stringify(data, null, 2)
   });
 
-  Logger.log("Form submission diproses.");
+  console.log("Form submission diproses.");
 }
 
 
@@ -210,20 +210,20 @@ function pasangSyncBerat() {
   _hapusTriggerBernama("syncBeratAman");
   ScriptApp.newTrigger("syncBeratAman")
     .timeBased().everyMinutes(1).create();
-  Logger.log("Trigger sync (per 1 menit) dipasang.");
+  console.log("Trigger sync (per 1 menit) dipasang.");
 }
 
 function syncBeratAman() {
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(5000)) {
-    Logger.log(`[${new Date().toISOString()}] SKIP — sync lain berjalan.`);
+    console.log(`[${new Date().toISOString()}] SKIP — sync lain berjalan.`);
     return;
   }
 
   try {
-    Logger.log(`[${new Date().toISOString()}] Mulai sync...`);
+    console.log(`[${new Date().toISOString()}] Mulai sync...`);
     Utilities.sleep(20000);   // 20 detik (lebih lama dari interval trigger)
-    Logger.log(`[${new Date().toISOString()}] Sync selesai.`);
+    console.log(`[${new Date().toISOString()}] Sync selesai.`);
   } finally {
     lock.releaseLock();
   }
@@ -317,5 +317,5 @@ function reminderKontrakBerlapis() {
   }
 
   range.setValues(data);
-  Logger.log(`${count} reminder dikirim.`);
+  console.log(`${count} reminder dikirim.`);
 }
