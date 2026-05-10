@@ -19,6 +19,15 @@ Google Apps Script (GAS) adalah platform otomatisasi Google Workspace yang **bah
 5. Untuk **menjalankan**: pilih nama function di dropdown "Select function" → klik **Run** ▶.
 6. Untuk **melihat output**: buka panel **Execution log** di bawah, atau menu **View → Logs**.
 
+![Tampilan Apps Script Editor — sidebar Files (appsscript.json, Code.gs), toolbar Run/Debug/Execution log, dan area editor dengan function default](images/apps-script-editor.png)
+
+**Bagian-bagian editor**:
+- **Sidebar kiri** — navigasi: Editor (`< >`), Triggers (⏰), Executions (📜), Project Settings (⚙️).
+- **Panel Files** — daftar file project. Default ada `Code.gs` dan `appsscript.json` (manifest).
+- **Toolbar atas** — Save, Undo/Redo, **Run** ▶, Debug, dropdown function aktif, **Execution log**.
+- **Area editor** — tempat menulis kode (mirip VS Code, ada syntax highlight & auto-complete).
+- **Tombol Deploy** (kanan atas) — untuk publish project sebagai Web App / Library / Add-on.
+
 > Pertama kali menjalankan kode, Google akan minta autorisasi. Klik **Review permissions** → pilih akun → **Advanced** → **Go to (project name) (unsafe)** → **Allow**. Ini normal untuk project pribadi.
 
 ---
