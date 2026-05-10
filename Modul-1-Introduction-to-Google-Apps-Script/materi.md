@@ -82,26 +82,18 @@ Contoh isi default:
 
 ### 2.3 Tampilan Editor
 
-```mermaid
-flowchart LR
-    subgraph Editor["Apps Script Editor"]
-        direction TB
-        Top["🔝 Header: nama project, Save, Run, Debug, Select function"]
-        Side["⬅️ Sidebar:<br/>Editor | Triggers | Executions | Project Settings"]
-        Main["📝 Area editor kode"]
-        Bottom["⬇️ Execution log (panel bawah)"]
-    end
-
-    classDef x fill:#dbeafe,stroke:#3b82f6
-    class Top,Side,Main,Bottom x
-```
+![Tampilan Apps Script Editor — sidebar Files (appsscript.json, Code.gs), toolbar Run/Debug/Execution log, dan area editor dengan function default](images/apps-script-editor.png)
 
 | Bagian | Fungsi |
 |---|---|
-| **Editor** (ikon `< >`) | Tempat menulis kode, file `.gs` dan `.html` |
-| **Triggers** (ikon ⏰) | Mengatur eksekusi otomatis (akan dibahas di Modul 6) |
-| **Executions** (ikon 📜) | Histori eksekusi script — sangat berguna untuk debug |
-| **Project Settings** (ikon ⚙️) | Konfigurasi project, timezone, manifest |
+| **Header** | Nama project, status save, tombol **Deploy**, ikon profil |
+| **Toolbar** | Save, Undo/Redo, **Run** ▶, Debug, dropdown function aktif, **Execution log** |
+| **Sidebar — Editor** (ikon `< >`) | Tempat menulis kode, file `.gs` dan `.html` |
+| **Sidebar — Triggers** (ikon ⏰) | Mengatur eksekusi otomatis (akan dibahas di Modul 6) |
+| **Sidebar — Executions** (ikon 📜) | Histori eksekusi script — sangat berguna untuk debug |
+| **Sidebar — Project Settings** (ikon ⚙️) | Konfigurasi project, timezone, manifest |
+| **Panel Files** | Daftar file `.gs` / `.html` di project + section **Libraries** dan **Services** |
+| **Area editor** | Tempat menulis kode dengan syntax highlight & auto-complete |
 
 ---
 
