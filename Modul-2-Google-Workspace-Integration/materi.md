@@ -161,7 +161,8 @@ function cariDiFolder(folderId, nama) {
   const folder = DriveApp.getFolderById(folderId);
   const files = folder.getFilesByName(nama);
   while (files.hasNext()) {
-    console.log(files.next().getName());
+    const f = files.next();
+    console.log(`${f.getName()} — ${f.getUrl()}`);
   }
 }
 
@@ -170,7 +171,8 @@ function cariBerisiKata(kata) {
   const query = `title contains '${kata}' and trashed = false`;
   const files = DriveApp.searchFiles(query);
   while (files.hasNext()) {
-    console.log(files.next().getName());
+    const f = files.next();
+    console.log(`${f.getName()} — ${f.getUrl()}`);
   }
 }
 
@@ -179,10 +181,27 @@ function cariDiFolderBerisiKata(folderId, kata) {
   const query = `title contains '${kata}' and '${folderId}' in parents and trashed = false`;
   const files = DriveApp.searchFiles(query);
   while (files.hasNext()) {
-    console.log(files.next().getName());
+    const f = files.next();
+    console.log(`${f.getName()} — ${f.getUrl()}`);
   }
 }
 ```
+
+> ⚠️ **Pitfall**: jangan panggil `files.next()` dua kali dalam satu iterasi — iterator akan maju dua langkah, file ganjil ke-skip. **Selalu simpan ke variabel dulu**:
+>
+> ```javascript
+> // ❌ Salah — next() dipanggil 2×, file di-skip
+> while (files.hasNext()) {
+>   console.log(files.next().getName());
+>   console.log(files.next().getUrl());   // ← file beda dari baris di atas
+> }
+>
+> // ✓ Benar
+> while (files.hasNext()) {
+>   const f = files.next();   // 1× per iterasi
+>   console.log(f.getName(), f.getUrl());
+> }
+> ```
 
 > **Hati-hati quoting**: kalau `kata` mengandung tanda petik `'`, escape dengan backslash: `title contains 'O\\'Brien'`. Untuk keamanan, hindari membangun query dari input user mentah — bisa jadi "query injection" mini.
 
