@@ -1,0 +1,151 @@
+<!--
+  Sidebar CRUD: list + edit + delete karyawan.
+  Taruh di project Apps Script dengan nama "ui-crud".
+-->
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body { font-family: Arial, sans-serif; padding: 10px; font-size: 13px; color: #1f2937; }
+    h3 { margin: 0 0 10px; color: #1e40af; }
+    .row { display: flex; align-items: center; padding: 6px; border-bottom: 1px solid #e5e7eb; gap: 6px; }
+    .row:hover { background: #f9fafb; }
+    .row .info { flex: 1; }
+    .row .info .nama { font-weight: bold; }
+    .row .info .meta { color: #6b7280; font-size: 11px; }
+    button { padding: 4px 8px; border: none; border-radius: 3px; cursor: pointer; font-size: 12px; }
+    .btn-edit   { background: #dbeafe; color: #1e40af; }
+    .btn-delete { background: #fee2e2; color: #991b1b; }
+    .btn-primary{ background: #1e40af; color: white; padding: 8px 16px; }
+
+    .form { background: #f9fafb; padding: 10px; border-radius: 4px; margin-top: 10px; display: none; }
+    .form.show { display: block; }
+    .form label { display: block; margin: 8px 0 4px; font-weight: bold; font-size: 12px; }
+    .form input, .form select { width: 100%; box-sizing: border-box; padding: 5px; border: 1px solid #d1d5db; border-radius: 3px; }
+
+    .status { margin-top: 8px; padding: 6px; border-radius: 4px; font-size: 12px; }
+    .ok    { background: #dcfce7; color: #166534; }
+    .error { background: #fee2e2; color: #991b1b; }
+  </style>
+</head>
+<body>
+  <h3>Kelola Karyawan</h3>
+
+  <button class="btn-primary" onclick="muat()">🔄 Refresh</button>
+  <div id="status"></div>
+  <div id="list"></div>
+
+  <div id="form" class="form">
+    <h4 id="form-judul">Edit Karyawan</h4>
+    <input type="hidden" id="row">
+    <label>Nama</label><input id="f-nama">
+    <label>Divisi</label>
+    <select id="f-divisi">
+      <option>Finance</option><option>Marketing</option>
+      <option>IT</option><option>HR</option><option>Ops</option>
+    </select>
+    <label>Gaji</label><input id="f-gaji" type="number">
+    <div style="margin-top: 10px;">
+      <button class="btn-primary" onclick="simpan()">Simpan</button>
+      <button onclick="tutupForm()">Batal</button>
+    </div>
+  </div>
+
+  <script>
+    let dataCache = [];
+
+    function muat() {
+      tampilStatus("Memuat...", "");
+      google.script.run
+        .withSuccessHandler(render)
+        .withFailureHandler((err) => tampilStatus("Error: " + err.message, "error"))
+        .bacaSemuaKaryawan();
+    }
+
+    function render(rows) {
+      dataCache = rows;
+      const list = document.getElementById("list");
+      list.innerHTML = "";
+      if (rows.length === 0) {
+        list.innerHTML = "<p><em>Tidak ada data.</em></p>";
+        tampilStatus("", "");
+        return;
+      }
+      rows.forEach((r) => {
+        const div = document.createElement("div");
+        div.className = "row";
+        const gaji = (Number(r.Gaji) || 0).toLocaleString("id-ID");
+        div.innerHTML = `
+          <div class="info">
+            <div class="nama">${escapeHtml(r.Nama)}</div>
+            <div class="meta">${escapeHtml(r.Divisi)} · Rp ${gaji}</div>
+          </div>
+          <button class="btn-edit"   onclick="edit(${r._row})">Edit</button>
+          <button class="btn-delete" onclick="hapus(${r._row})">×</button>
+        `;
+        list.appendChild(div);
+      });
+      tampilStatus(`${rows.length} record dimuat.`, "ok");
+    }
+
+    function edit(rowNum) {
+      const r = dataCache.find((x) => x._row === rowNum);
+      if (!r) return;
+      document.getElementById("row").value = rowNum;
+      document.getElementById("f-nama").value = r.Nama;
+      document.getElementById("f-divisi").value = r.Divisi;
+      document.getElementById("f-gaji").value = r.Gaji;
+      document.getElementById("form").classList.add("show");
+    }
+
+    function tutupForm() {
+      document.getElementById("form").classList.remove("show");
+    }
+
+    function simpan() {
+      const rec = {
+        _row:   parseInt(document.getElementById("row").value, 10),
+        Nama:   document.getElementById("f-nama").value.trim(),
+        Divisi: document.getElementById("f-divisi").value,
+        Gaji:   document.getElementById("f-gaji").value,
+        "Tanggal Daftar": new Date()
+      };
+      if (!rec.Nama) return tampilStatus("Nama wajib.", "error");
+
+      tampilStatus("Menyimpan...", "");
+      google.script.run
+        .withSuccessHandler(() => {
+          tutupForm();
+          muat();
+        })
+        .withFailureHandler((err) => tampilStatus("Error: " + err.message, "error"))
+        .updateKaryawan(rec);
+    }
+
+    function hapus(rowNum) {
+      if (!confirm(`Hapus baris ${rowNum}?`)) return;
+      tampilStatus("Menghapus...", "");
+      google.script.run
+        .withSuccessHandler(muat)
+        .withFailureHandler((err) => tampilStatus("Error: " + err.message, "error"))
+        .hapusKaryawan(rowNum);
+    }
+
+    function tampilStatus(msg, cls) {
+      const el = document.getElementById("status");
+      el.className = msg ? "status " + cls : "";
+      el.textContent = msg;
+    }
+
+    function escapeHtml(s) {
+      return String(s ?? "").replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
+      }[c]));
+    }
+
+    // Auto-load saat sidebar dibuka
+    muat();
+  </script>
+</body>
+</html>

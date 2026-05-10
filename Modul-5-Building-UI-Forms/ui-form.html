@@ -1,0 +1,81 @@
+<!--
+  File HTML untuk sidebar/modal form sederhana (Bagian 3.3 materi.md).
+  Taruh di project Apps Script dengan nama "ui-form".
+-->
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body { font-family: Arial, sans-serif; padding: 12px; font-size: 14px; color: #1f2937; }
+    h3 { margin-top: 0; color: #1e40af; }
+    label { display: block; margin: 10px 0 4px; font-weight: bold; }
+    input, select { width: 100%; box-sizing: border-box; padding: 6px; border: 1px solid #d1d5db; border-radius: 4px; }
+    button { margin-top: 14px; padding: 8px 16px; background: #1e40af; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
+    button:hover { background: #1e3a8a; }
+    button:disabled { background: #9ca3af; cursor: not-allowed; }
+    .status { margin-top: 10px; padding: 8px; border-radius: 4px; font-size: 13px; }
+    .ok    { background: #dcfce7; color: #166534; }
+    .error { background: #fee2e2; color: #991b1b; }
+    .info  { background: #dbeafe; color: #1e40af; }
+  </style>
+</head>
+<body>
+  <h3>Tambah Karyawan</h3>
+
+  <label>Nama</label>
+  <input id="nama" type="text" required>
+
+  <label>Divisi</label>
+  <select id="divisi">
+    <option>Finance</option>
+    <option>Marketing</option>
+    <option>IT</option>
+    <option>HR</option>
+    <option>Ops</option>
+  </select>
+
+  <label>Gaji (Rp)</label>
+  <input id="gaji" type="number" min="0" step="100000" value="0">
+
+  <button id="btn-simpan" onclick="kirim()">Simpan</button>
+  <div id="status"></div>
+
+  <script>
+    function kirim() {
+      const data = {
+        nama:   document.getElementById("nama").value.trim(),
+        divisi: document.getElementById("divisi").value,
+        gaji:   document.getElementById("gaji").value
+      };
+
+      // Validasi client
+      if (!data.nama) return tampilStatus("Nama wajib diisi.", "error");
+      if (data.nama.length < 2) return tampilStatus("Nama minimal 2 karakter.", "error");
+
+      const btn = document.getElementById("btn-simpan");
+      btn.disabled = true;
+      tampilStatus("Menyimpan...", "info");
+
+      google.script.run
+        .withSuccessHandler((resp) => {
+          tampilStatus(resp.message, "ok");
+          document.getElementById("nama").value = "";
+          document.getElementById("gaji").value = "0";
+          btn.disabled = false;
+        })
+        .withFailureHandler((err) => {
+          tampilStatus("Error: " + err.message, "error");
+          btn.disabled = false;
+        })
+        .simpanData(data);
+    }
+
+    function tampilStatus(msg, cls) {
+      const el = document.getElementById("status");
+      el.className = "status " + cls;
+      el.textContent = msg;
+    }
+  </script>
+</body>
+</html>
