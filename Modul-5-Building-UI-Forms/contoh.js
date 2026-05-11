@@ -22,6 +22,7 @@ function onOpen() {
     .addItem("Buka Form (sidebar)",     "bukaSidebarForm")
     .addItem("Buka Form (modal)",       "bukaModalForm")
     .addItem("Buka Sidebar CRUD",       "bukaSidebarCRUD")
+    .addItem("Import Excel",            "bukaUpload")
     .addToUi();
 }
 
@@ -180,4 +181,114 @@ function hapusKaryawan(rowNumber) {
     .deleteRow(rowNumber);
 
   return { ok: true };
+}
+
+
+/* =========================================================================
+ * BAGIAN 5 — Upload Excel untuk Input Data
+ *
+ * PRASYARAT:
+ *   1. Tambah file HTML "ui-upload" di project (lihat ui-upload.html
+ *      di folder modul ini).
+ *   2. Enable Advanced Drive Service:
+ *      Editor → ikon + di "Services" (sidebar kiri) → cari Drive API → Add.
+ * ========================================================================= */
+
+function bukaUpload() {
+  const html = HtmlService.createHtmlOutputFromFile("ui-upload")
+    .setTitle("Import Excel").setWidth(380);
+  SpreadsheetApp.getUi().showSidebar(html);
+}
+
+// Import langsung (tanpa preview)
+function importExcel(base64, fileName, mimeType) {
+  const bytes = Utilities.base64Decode(base64);
+  const blob  = Utilities.newBlob(bytes, mimeType, fileName);
+
+  // Upload sebagai Google Sheet (auto-convert dari xlsx)
+  const resource = {
+    title:    fileName.replace(/\.xlsx?$/i, "") + "-temp-import",
+    mimeType: MimeType.GOOGLE_SHEETS
+  };
+  const uploadedFile = Drive.Files.insert(resource, blob, { convert: true });
+
+  try {
+    const tempSS = SpreadsheetApp.openById(uploadedFile.id);
+    const tempSheet = tempSS.getSheets()[0];
+    const data = tempSheet.getDataRange().getValues();
+
+    if (data.length < 2) throw new Error("File kosong atau cuma header.");
+
+    const headers = data[0];
+    const rows    = data.slice(1);
+
+    const expectedHeaders = ["Nama", "Divisi", "Gaji"];
+    const missing = expectedHeaders.filter((h) => !headers.includes(h));
+    if (missing.length > 0) {
+      throw new Error(`Kolom hilang: ${missing.join(", ")}`);
+    }
+
+    const target = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Karyawan");
+    const startRow = target.getLastRow() + 1;
+    target.getRange(startRow, 1, rows.length, headers.length).setValues(rows);
+
+    return { inserted: rows.length, headers };
+  } finally {
+    DriveApp.getFileById(uploadedFile.id).setTrashed(true);
+  }
+}
+
+// Preview Excel — convert, baca, kirim back tanpa insert.
+// File temp tetap disimpan sementara di Drive; akan dihapus saat confirmImport
+// atau saat error (catch block).
+function previewExcel(base64, fileName, mimeType) {
+  const bytes = Utilities.base64Decode(base64);
+  const blob  = Utilities.newBlob(bytes, mimeType, fileName);
+
+  const uploaded = Drive.Files.insert(
+    { title: "preview-" + Date.now(), mimeType: MimeType.GOOGLE_SHEETS },
+    blob,
+    { convert: true }
+  );
+
+  try {
+    const sheet = SpreadsheetApp.openById(uploaded.id).getSheets()[0];
+    const data  = sheet.getDataRange().getValues();
+    return {
+      totalRows: Math.max(0, data.length - 1),
+      headers:   data[0] || [],
+      preview:   data.slice(1, 6),
+      tempId:    uploaded.id
+    };
+  } catch (err) {
+    DriveApp.getFileById(uploaded.id).setTrashed(true);
+    throw err;
+  }
+}
+
+// Confirm import — baca dari tempId hasil previewExcel, insert ke target, hapus temp
+function confirmImport(tempId) {
+  try {
+    const sheet = SpreadsheetApp.openById(tempId).getSheets()[0];
+    const data  = sheet.getDataRange().getValues();
+
+    if (data.length < 2) throw new Error("File kosong.");
+
+    const headers = data[0];
+    const rows    = data.slice(1);
+
+    const expectedHeaders = ["Nama", "Divisi", "Gaji"];
+    const missing = expectedHeaders.filter((h) => !headers.includes(h));
+    if (missing.length > 0) {
+      throw new Error(`Kolom hilang: ${missing.join(", ")}`);
+    }
+
+    const target = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Karyawan");
+    const startRow = target.getLastRow() + 1;
+    target.getRange(startRow, 1, rows.length, headers.length).setValues(rows);
+
+    return { inserted: rows.length };
+  } finally {
+    DriveApp.getFileById(tempId).setTrashed(true);
+  }
 }

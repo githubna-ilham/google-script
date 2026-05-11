@@ -308,7 +308,239 @@ Implementasi lengkap di `contoh.js` (function `bukaSidebarCRUD`).
 
 ---
 
-## 7. Validasi — Client vs Server
+## 7. Upload File Excel untuk Input Data
+
+Use case nyata yang sering dibutuhkan: user **upload file Excel (.xlsx)**, sistem parse, lalu insert ribuan baris ke Sheet sekaligus. Lebih cepat daripada input manual baris per baris.
+
+```mermaid
+flowchart LR
+    A["📂 User pilih file .xlsx<br/>(input type=file)"]:::a
+    --> B["📦 Client baca isi<br/>FileReader → base64"]:::b
+    --> C["📡 google.script.run<br/>kirim ke server"]:::c
+    --> D["☁️ Drive convert<br/>xlsx ➜ Sheet temp"]:::d
+    --> E["📖 Baca pakai<br/>SpreadsheetApp"]:::e
+    --> F["✅ setValues ke Sheet target<br/>+ hapus file temp"]:::f
+
+    classDef a fill:#fef3c7,stroke:#f59e0b,stroke-width:2px
+    classDef b fill:#dbeafe,stroke:#3b82f6
+    classDef c fill:#e0e7ff,stroke:#6366f1
+    classDef d fill:#fce7f3,stroke:#ec4899
+    classDef e fill:#fef3c7,stroke:#f59e0b
+    classDef f fill:#dcfce7,stroke:#16a34a,stroke-width:2px
+```
+
+### 7.1 Konsep Inti
+
+Apps Script **tidak bisa baca .xlsx langsung**. Triknya: **upload file ke Drive sebagai Google Sheet** — Drive API otomatis konversi `.xlsx` → Sheet, lalu kita baca pakai `SpreadsheetApp` seperti biasa. Setelah selesai, file Sheet temp dihapus supaya tidak menumpuk di Drive.
+
+> ⚠️ **Wajib enable Advanced Drive Service**: Editor → ikon **+** di **Services** (sidebar kiri) → cari **Drive API** → Add. Tanpa ini, `Drive.Files.insert(..., { convert: true })` tidak tersedia.
+
+### 7.2 HTML Side
+
+```html
+<!-- ui-upload.html -->
+<label>Upload Excel (.xlsx)</label>
+<input type="file" id="file" accept=".xlsx,.xls">
+<button onclick="upload()">Import</button>
+<div id="status"></div>
+
+<script>
+function upload() {
+  const file = document.getElementById("file").files[0];
+  if (!file) return show("Pilih file dulu.", "error");
+
+  // Batas ukuran: payload google.script.run ~50 MB
+  if (file.size > 25 * 1024 * 1024) {
+    return show("File terlalu besar (max 25 MB).", "error");
+  }
+
+  show("Mengupload...", "info");
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    // e.target.result = "data:application/vnd...;base64,XXXXX"
+    const base64 = e.target.result.split(",")[1];   // bagian setelah comma
+
+    google.script.run
+      .withSuccessHandler((r) => show(`Berhasil: ${r.inserted} baris dimasukkan.`, "ok"))
+      .withFailureHandler((err) => show("Error: " + err.message, "error"))
+      .importExcel(base64, file.name, file.type);
+  };
+  reader.readAsDataURL(file);
+}
+
+function show(msg, cls) {
+  const el = document.getElementById("status");
+  el.className = "status " + cls;
+  el.textContent = msg;
+}
+</script>
+```
+
+### 7.3 Server Side
+
+```javascript
+function bukaUpload() {
+  const html = HtmlService.createHtmlOutputFromFile("ui-upload")
+    .setTitle("Import Excel").setWidth(380);
+  SpreadsheetApp.getUi().showSidebar(html);
+}
+
+function importExcel(base64, fileName, mimeType) {
+  // 1. Decode base64 → Blob
+  const bytes = Utilities.base64Decode(base64);
+  const blob  = Utilities.newBlob(bytes, mimeType, fileName);
+
+  // 2. Upload ke Drive sebagai Google Sheet (auto-convert xlsx)
+  const resource = {
+    title:    fileName.replace(/\.xlsx?$/i, "") + "-temp-import",
+    mimeType: MimeType.GOOGLE_SHEETS
+  };
+  const uploadedFile = Drive.Files.insert(resource, blob, { convert: true });
+
+  try {
+    // 3. Baca dari Sheet hasil convert
+    const tempSS = SpreadsheetApp.openById(uploadedFile.id);
+    const tempSheet = tempSS.getSheets()[0];
+    const data = tempSheet.getDataRange().getValues();
+
+    if (data.length < 2) throw new Error("File kosong atau cuma header.");
+
+    const headers = data[0];
+    const rows    = data.slice(1);
+
+    // 4. Validasi header
+    const expectedHeaders = ["Nama", "Divisi", "Gaji"];
+    const missing = expectedHeaders.filter((h) => !headers.includes(h));
+    if (missing.length > 0) {
+      throw new Error(`Kolom hilang: ${missing.join(", ")}`);
+    }
+
+    // 5. Insert ke Sheet tujuan (1 round-trip)
+    const target = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Karyawan");
+    const startRow = target.getLastRow() + 1;
+    target.getRange(startRow, 1, rows.length, headers.length).setValues(rows);
+
+    return { inserted: rows.length };
+  } finally {
+    // 6. Cleanup — hapus file Sheet temp di Drive (apapun hasil try block)
+    DriveApp.getFileById(uploadedFile.id).setTrashed(true);
+  }
+}
+```
+
+### 7.4 Preview Sebelum Import (UX lebih baik)
+
+User suka cemas saat upload file besar — "kira-kira datanya bener tidak ya?". Tambahkan **preview**: convert + baca di server, kembalikan struktur + 5 baris pertama, baru insert kalau user klik Confirm.
+
+**Server**:
+
+```javascript
+function previewExcel(base64, fileName, mimeType) {
+  const bytes = Utilities.base64Decode(base64);
+  const blob  = Utilities.newBlob(bytes, mimeType, fileName);
+  const uploaded = Drive.Files.insert(
+    { title: "preview-" + Date.now(), mimeType: MimeType.GOOGLE_SHEETS },
+    blob,
+    { convert: true }
+  );
+
+  try {
+    const sheet = SpreadsheetApp.openById(uploaded.id).getSheets()[0];
+    const data  = sheet.getDataRange().getValues();
+    return {
+      totalRows: Math.max(0, data.length - 1),
+      headers:   data[0] || [],
+      preview:   data.slice(1, 6),    // 5 baris pertama
+      tempId:    uploaded.id          // dikirim balik untuk confirmImport
+    };
+  } catch (err) {
+    // Cleanup kalau preview gagal
+    DriveApp.getFileById(uploaded.id).setTrashed(true);
+    throw err;
+  }
+}
+
+function confirmImport(tempId) {
+  try {
+    const sheet = SpreadsheetApp.openById(tempId).getSheets()[0];
+    const data  = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const rows    = data.slice(1);
+
+    const target = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Karyawan");
+    const startRow = target.getLastRow() + 1;
+    target.getRange(startRow, 1, rows.length, headers.length).setValues(rows);
+
+    return { inserted: rows.length };
+  } finally {
+    DriveApp.getFileById(tempId).setTrashed(true);
+  }
+}
+```
+
+**Client flow** (2-step):
+
+```html
+<button onclick="preview()">1. Preview</button>
+<div id="previewArea"></div>
+<button id="btn-confirm" style="display:none" onclick="kirimImport()">2. Import</button>
+
+<script>
+let cachedTempId;
+
+function preview() {
+  const file = document.getElementById("file").files[0];
+  if (!file) return alert("Pilih file dulu.");
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const base64 = e.target.result.split(",")[1];
+    google.script.run
+      .withSuccessHandler((r) => {
+        cachedTempId = r.tempId;
+        renderTabel(r);
+        document.getElementById("btn-confirm").style.display = "inline";
+      })
+      .withFailureHandler((err) => alert("Error: " + err.message))
+      .previewExcel(base64, file.name, file.type);
+  };
+  reader.readAsDataURL(file);
+}
+
+function kirimImport() {
+  google.script.run
+    .withSuccessHandler((r) => alert(`${r.inserted} baris dimasukkan.`))
+    .confirmImport(cachedTempId);
+}
+
+function renderTabel(r) {
+  const html = `
+    <p>Total ${r.totalRows} baris, kolom: ${r.headers.join(", ")}</p>
+    <table border="1" style="width:100%; border-collapse: collapse;">
+      <tr>${r.headers.map((h) => `<th>${h}</th>`).join("")}</tr>
+      ${r.preview.map((row) =>
+        `<tr>${row.map((c) => `<td>${c}</td>`).join("")}</tr>`
+      ).join("")}
+    </table>
+  `;
+  document.getElementById("previewArea").innerHTML = html;
+}
+</script>
+```
+
+### 7.5 Best Practices
+
+1. **Validasi header dulu** — gagal cepat kalau struktur file tidak sesuai. Pesan error harus sebutkan kolom yang hilang/salah.
+2. **Validasi tiap baris** — cek tipe data (gaji harus angka, email harus valid). Kumpulkan error → tampilkan ke user, jangan langsung crash di baris pertama yang salah.
+3. **Limit file size** — `google.script.run` ada batas payload ~50 MB. Cek `file.size` di client (`<input type="file">.files[0].size`) sebelum upload.
+4. **Batch besar = pakai chunking** — kalau > 5.000 baris, pecah per 1.000 baris dengan `setValues` terpisah. Total round-trip masih jauh lebih sedikit dari per-cell.
+5. **Selalu cleanup file temp** — kalau pakai pola convert Excel, hapus file Drive temp di `finally` block supaya tidak menumpuk.
+6. **Preview sebelum Import** — pola 2-step jauh mengurangi user anxiety dan memungkinkan koreksi sebelum data masuk.
+7. **Audit log** — catat ke Sheet `Audit-Log`: siapa upload, kapan, file apa, berapa baris, sukses/fail. Berguna saat ada masalah data nantinya.
+
+---
+
+## 8. Validasi — Client vs Server
 
 **Validasi rangkap**: di client untuk UX cepat, di server untuk integritas data (jangan percaya client).
 
@@ -335,7 +567,7 @@ function simpanData(formData) {
 
 ---
 
-## 8. Best Practices
+## 9. Best Practices
 
 1. **Pisahkan UI dan logic**: HTML untuk presentasi, server function untuk data ops.
 2. **Selalu set `<base target="_top">`** di `<head>` HTML — supaya link tidak terjebak di iframe.
@@ -347,7 +579,7 @@ function simpanData(formData) {
 
 ---
 
-## 9. Penutup
+## 10. Penutup
 
 **Yang harus dikuasai sebelum lanjut**:
 
@@ -359,5 +591,7 @@ function simpanData(formData) {
 - [ ] Bisa bikin form CRUD lengkap (create/read/update/delete).
 - [ ] Tahu kapan pakai sidebar vs modal.
 - [ ] Validasi dua sisi (client + server).
+- [ ] Bisa terima upload Excel via sidebar, convert via Drive, insert ke Sheet.
+- [ ] Paham pola Preview → Confirm untuk import file besar.
 
 **Selanjutnya: Modul 6 — Workflow Automation (Triggers).**

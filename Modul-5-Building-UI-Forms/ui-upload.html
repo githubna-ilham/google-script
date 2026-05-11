@@ -1,0 +1,138 @@
+<!--
+  Sidebar upload Excel dengan flow 2 step (Preview → Confirm Import).
+  Taruh di project Apps Script dengan nama "ui-upload".
+-->
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body { font-family: Arial, sans-serif; padding: 12px; font-size: 13px; color: #1f2937; }
+    h3 { margin: 0 0 10px; color: #1e40af; }
+    label { display: block; margin: 10px 0 4px; font-weight: bold; font-size: 12px; }
+    input[type="file"] { width: 100%; box-sizing: border-box; padding: 4px; border: 1px solid #d1d5db; border-radius: 3px; }
+    button { padding: 8px 14px; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; margin-top: 8px; }
+    button:disabled { background: #9ca3af; cursor: not-allowed; }
+    .btn-primary  { background: #1e40af; color: white; }
+    .btn-confirm  { background: #16a34a; color: white; }
+    .btn-cancel   { background: #e5e7eb; color: #374151; }
+
+    .status { margin-top: 10px; padding: 8px; border-radius: 4px; font-size: 12px; }
+    .ok    { background: #dcfce7; color: #166534; }
+    .error { background: #fee2e2; color: #991b1b; }
+    .info  { background: #dbeafe; color: #1e40af; }
+
+    #previewArea { margin-top: 12px; max-height: 280px; overflow: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { border: 1px solid #d1d5db; padding: 4px 6px; text-align: left; }
+    th { background: #f3f4f6; font-weight: bold; }
+
+    .info-row { color: #6b7280; font-size: 11px; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <h3>Import Excel</h3>
+
+  <label>File Excel (.xlsx)</label>
+  <input id="file" type="file" accept=".xlsx,.xls">
+  <div class="info-row">Header yang diperlukan: <b>Nama, Divisi, Gaji</b></div>
+
+  <div>
+    <button id="btn-preview" class="btn-primary" onclick="preview()">Preview</button>
+  </div>
+
+  <div id="status"></div>
+  <div id="previewArea"></div>
+
+  <div id="confirm-row" style="display:none; margin-top: 12px;">
+    <button class="btn-confirm" onclick="kirimImport()">✓ Import sekarang</button>
+    <button class="btn-cancel" onclick="batal()">Batal</button>
+  </div>
+
+  <script>
+    let cachedTempId = null;
+
+    function preview() {
+      const file = document.getElementById("file").files[0];
+      if (!file) return show("Pilih file dulu.", "error");
+
+      // Max 25 MB (margin di bawah 50 MB payload limit google.script.run)
+      if (file.size > 25 * 1024 * 1024) {
+        return show("File terlalu besar (max 25 MB).", "error");
+      }
+
+      const btn = document.getElementById("btn-preview");
+      btn.disabled = true;
+      show("Mengupload & mengonversi...", "info");
+      document.getElementById("previewArea").innerHTML = "";
+      document.getElementById("confirm-row").style.display = "none";
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const base64 = e.target.result.split(",")[1];
+        google.script.run
+          .withSuccessHandler((r) => {
+            btn.disabled = false;
+            cachedTempId = r.tempId;
+            renderTabel(r);
+            show(`Preview siap — ${r.totalRows} baris terdeteksi.`, "ok");
+            document.getElementById("confirm-row").style.display = "block";
+          })
+          .withFailureHandler((err) => {
+            btn.disabled = false;
+            show("Error: " + err.message, "error");
+          })
+          .previewExcel(base64, file.name, file.type);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function kirimImport() {
+      if (!cachedTempId) return;
+      show("Memasukkan data ke Sheet...", "info");
+      google.script.run
+        .withSuccessHandler((r) => {
+          show(`✓ Berhasil: ${r.inserted} baris dimasukkan.`, "ok");
+          batal();   // reset state
+        })
+        .withFailureHandler((err) => show("Error: " + err.message, "error"))
+        .confirmImport(cachedTempId);
+    }
+
+    function batal() {
+      cachedTempId = null;
+      document.getElementById("previewArea").innerHTML = "";
+      document.getElementById("confirm-row").style.display = "none";
+      document.getElementById("file").value = "";
+    }
+
+    function renderTabel(r) {
+      const cells = r.preview.length === 0
+        ? "<tr><td colspan='99'><i>Tidak ada baris data.</i></td></tr>"
+        : r.preview.map((row) =>
+            `<tr>${row.map((c) => `<td>${escapeHtml(String(c ?? ""))}</td>`).join("")}</tr>`
+          ).join("");
+
+      document.getElementById("previewArea").innerHTML = `
+        <p class="info-row">5 baris pertama (total ${r.totalRows} baris):</p>
+        <table>
+          <thead><tr>${r.headers.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}</tr></thead>
+          <tbody>${cells}</tbody>
+        </table>
+      `;
+    }
+
+    function show(msg, cls) {
+      const el = document.getElementById("status");
+      el.className = "status " + cls;
+      el.textContent = msg;
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, (c) => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
+      }[c]));
+    }
+  </script>
+</body>
+</html>
