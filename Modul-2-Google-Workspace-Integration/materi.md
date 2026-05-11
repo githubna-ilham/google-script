@@ -230,6 +230,39 @@ flowchart TD
 
 Setiap Doc punya satu `Body`, dan Body berisi koleksi elemen (paragraph, table, image, list item) yang berurutan.
 
+**Penjelasan tiap node**:
+
+| Node | Apa itu | Method utama | Contoh |
+|---|---|---|---|
+| **Document** | Object yang merepresentasikan file Doc utuh. Pintu masuk ke seluruh isi. | `DocumentApp.create("Judul")`, `DocumentApp.openById(id)`, `doc.getBody()`, `doc.saveAndClose()`, `doc.getUrl()` | `const doc = DocumentApp.create("Laporan")` |
+| **Body** | Container utama isi dokumen — semua paragraf, tabel, gambar, dan list ada di sini. Body adalah **satu-satunya anak langsung** Document. | `body.appendParagraph(...)`, `body.appendTable(...)`, `body.appendListItem(...)`, `body.replaceText(...)` | `const body = doc.getBody()` |
+| **Paragraph** | Satu paragraf teks. Setara dengan satu blok tulisan yang diakhiri Enter. Bisa diberi heading style. | `.setText(...)`, `.setHeading(HEADING1...HEADING6)`, `.setBold(true)`, `.editAsText()` | `body.appendParagraph("Judul").setHeading(DocumentApp.ParagraphHeading.HEADING1)` |
+| **Text (run)** | Bagian teks **di dalam** Paragraph. Disebut "run" karena merepresentasikan rentang karakter dengan formatting yang sama. Di sinilah formatting karakter (bold/italic/warna/font) di-set. | `.setBold(start, end, true)`, `.setForegroundColor(...)`, `.setFontFamily(...)`, `.findText(...)` | `paragraph.editAsText().setBold(0, 4, true)` |
+| **Table** | Tabel dengan baris & kolom. Tiap sel adalah `TableCell` yang juga berisi paragraph di dalamnya. | `body.appendTable([["h1","h2"],["a","b"]])`, `table.getRow(i)`, `table.getCell(r,c)` | `body.appendTable(tableData)` |
+| **InlineImage** | Gambar yang tertanam di baris teks. Dimasukkan ke paragraph atau langsung di body. Sumber: Blob (dari Drive, URL fetch, dll). | `body.appendImage(blob)`, `paragraph.appendInlineImage(blob)`, `image.setWidth(...)`, `image.setHeight(...)` | `body.appendImage(DriveApp.getFileById(id).getBlob())` |
+| **ListItem** | Item dalam daftar (bullet/numbered). Mirip Paragraph tapi punya nesting level + glyph (bulet/angka). | `body.appendListItem("isi")`, `.setGlyphType(GlyphType.BULLET/NUMBER)`, `.setNestingLevel(0...8)` | `body.appendListItem("Item 1").setGlyphType(DocumentApp.GlyphType.BULLET)` |
+
+**Pola umum** saat manipulasi Doc:
+
+```mermaid
+flowchart LR
+    Get["Document<br/>(get/create)"]:::get
+    --> Body["doc.getBody()"]:::body
+    --> Append["appendXxx(...)<br/>atau replaceText(...)"]:::act
+    --> Save["doc.saveAndClose()"]:::save
+
+    classDef get fill:#fef3c7,stroke:#f59e0b
+    classDef body fill:#dbeafe,stroke:#3b82f6,stroke-width:2px
+    classDef act fill:#dcfce7,stroke:#16a34a
+    classDef save fill:#fce7f3,stroke:#ec4899
+```
+
+**Tips praktis**:
+- `appendParagraph` mengembalikan object Paragraph — bisa langsung di-chain: `.setHeading(...).setBold(...)`.
+- Setelah selesai edit Doc, panggil `doc.saveAndClose()`. Tanpa ini, perubahan kadang belum persist saat script langsung lanjut export PDF atau kirim email.
+- Mau format karakter dalam paragraph (bold sebagian)? Pakai `.editAsText()` untuk dapat object `Text`, lalu `.setBold(startIndex, endIndex, true)`.
+- **Urutan elemen** di Body sesuai urutan `append` dipanggil. Untuk insert di posisi tertentu, pakai `insertParagraph(index, ...)` / `insertTable(index, ...)`.
+
 ### 3.2 Membuat Doc baru dari kode
 
 ```javascript
