@@ -75,22 +75,121 @@ function tambahKaryawanCepat() {
 }
 ```
 
-### 2.3 Custom Menu (review dari Modul 3)
+### 2.3 Custom Menu
+
+Custom menu adalah **pintu masuk utama** untuk user akhir memakai automation kita. Dia muncul di toolbar Sheet (sebelah menu Help) saat Sheet dibuka — dan setiap item bisa men-trigger function manapun di project.
+
+#### Contoh lengkap (versi M5)
 
 ```javascript
 function onOpen() {
   SpreadsheetApp.getUi()
-    .createMenu("⚡ Otomasi")
-    .addItem("Tambah karyawan", "tambahKaryawanCepat")
-    .addItem("Konfirmasi hapus", "konfirmasiHapus")
+    .createMenu("⚡ Form M5")                                    // 1. Bikin menu utama
+    .addItem("Tambah cepat (prompt)",    "tambahKaryawanCepat")   // 2. Item → function
+    .addItem("Konfirmasi hapus (alert)", "konfirmasiHapus")
+    .addSeparator()                                               // 3. Garis pemisah
+    .addItem("Buka Form (sidebar)",      "bukaSidebarForm")
+    .addItem("Buka Form (modal)",        "bukaModalForm")
+    .addItem("Buka Sidebar CRUD",        "bukaSidebarCRUD")
+    .addItem("Import Excel",             "bukaUpload")
+    .addToUi();                                                   // 4. Finalize → tampil di toolbar
+}
+```
+
+Hasil di toolbar Sheet (setelah reload):
+
+```
+[File] [Edit] [View] ... [Help] [⚡ Form M5 ▾]
+                                  ├─ Tambah cepat (prompt)
+                                  ├─ Konfirmasi hapus (alert)
+                                  ├──────────────────────
+                                  ├─ Buka Form (sidebar)
+                                  ├─ Buka Form (modal)
+                                  ├─ Buka Sidebar CRUD
+                                  └─ Import Excel
+```
+
+#### Anatomi method-by-method
+
+| Method | Fungsi |
+|---|---|
+| **`SpreadsheetApp.getUi()`** | Ambil object `Ui` — root semua interaksi UI di container-bound script. Ada juga `DocumentApp.getUi()` untuk Doc, `FormApp.getUi()` untuk Form. |
+| **`.createMenu(label)`** | Bikin menu builder dengan label yang akan tampil di toolbar. Boleh pakai emoji (`⚡`, `🤖`, `📊`) untuk visual hint. |
+| **`.addItem(label, functionName)`** | Tambah baris menu. `functionName` adalah **string nama function** di project yang sama. Saat user klik → function dipanggil. |
+| **`.addSeparator()`** | Garis pembatas — group item secara visual. Tidak bisa diklik. |
+| **`.addSubMenu(menu)`** | Tambah sub-menu (menu di dalam menu). Argumennya `Menu` object lain. Akan tampil dengan tanda ▸ di kanan. |
+| **`.addToUi()`** | Finalize — tanpa ini, menu **tidak akan tampil**. Wajib di akhir chain. |
+
+#### Sub-menu (nested)
+
+```javascript
+function onOpen() {
+  const ui = SpreadsheetApp.getUi();
+
+  const submenuTools = ui.createMenu("🛠️ Tools")
+    .addItem("Reset format",  "resetFormat")
+    .addItem("Hapus chart",   "hapusChart");
+
+  ui.createMenu("⚡ Form M5")
+    .addItem("Tambah cepat", "tambahKaryawanCepat")
     .addSeparator()
-    .addSubMenu(
-      SpreadsheetApp.getUi().createMenu("Tools")
-        .addItem("Reset format", "resetFormat")
-    )
+    .addSubMenu(submenuTools)
     .addToUi();
 }
 ```
+
+Hasilnya:
+```
+⚡ Form M5 ▾
+├─ Tambah cepat
+├──────────────
+└─ 🛠️ Tools ▸
+              ├─ Reset format
+              └─ Hapus chart
+```
+
+#### Aturan penting `onOpen`
+
+1. **Nama function harus persis `onOpen`** — ini reserved name di Apps Script. Tidak boleh `onOpenMenu` atau `setupMenu`.
+2. **Otomatis jalan saat user membuka Sheet** — tidak perlu trigger setup manual. Termasuk **simple trigger**, jadi akan jalan otomatis selama script container-bound.
+3. **Container-bound only** — kalau script standalone, `onOpen` tidak akan terpicu karena tidak ada Sheet yang "dibuka". Untuk standalone, deploy sebagai library lalu panggil dari container-bound (lihat Modul 3 §7).
+4. **Reload Sheet untuk lihat perubahan menu** — kalau ubah kode `onOpen`, Sheet harus di-refresh browser-nya supaya menu baru muncul.
+5. **Simple trigger = akses terbatas** — `onOpen` versi simple trigger **tidak bisa** panggil service yang butuh authorisasi (MailApp, UrlFetchApp, dll). Tapi membuat menu yang **isinya** function yang panggil service tersebut — itu OK, karena trigger autorisasi terjadi saat user klik item.
+
+#### `addItem` hanya menerima nama function di project yang sama
+
+```javascript
+// ❌ Tidak bekerja — addItem cuma menerima string nama function
+.addItem("Halo", "MyLib.sapaUser")
+
+// ✓ Bekerja — bikin stub di project ini yang panggil library
+.addItem("Halo", "menuSapa")
+
+function menuSapa() {
+  MyLib.sapaUser();   // delegasi ke library
+}
+```
+
+Pattern stub function ini sering dipakai saat code reuse via library (Modul 3 §7).
+
+#### Variasi: dynamic menu
+
+Menu bisa di-generate dinamis dari data:
+
+```javascript
+function onOpen() {
+  const menu = SpreadsheetApp.getUi().createMenu("📋 Laporan");
+
+  // Generate item per sheet di spreadsheet
+  SpreadsheetApp.getActiveSpreadsheet().getSheets().forEach((s) => {
+    menu.addItem(`Refresh ${s.getName()}`, `refresh_${s.getName()}`);
+  });
+
+  menu.addToUi();
+}
+```
+
+> ⚠️ Hati-hati: nama function di `addItem` tetap harus **fixed string saat runtime** — peserta perlu tahu nama function-nya untuk dipanggil. Pattern ini umumnya dikombinasikan dengan switch/lookup table di handler.
 
 ---
 
