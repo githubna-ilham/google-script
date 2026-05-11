@@ -361,34 +361,7 @@ Setelah di-save, di Sheet ketik `=HITUNG_DISKON(A2)` di sel manapun → hasil ot
 
 ---
 
-## 7. Trigger Sederhana — `onEdit` & `onOpen`
-
-(Pendalaman trigger ada di Modul 6. Di sini cukup pengenalan agar Anda lihat kemungkinannya.)
-
-```javascript
-// Otomatis jalan saat user mengetik di sheet
-function onEdit(e) {
-  const range = e.range;
-  if (range.getColumn() === 4 && range.getValue() === "DONE") {
-    range.setBackground("#dcfce7");
-  }
-}
-
-// Otomatis jalan saat sheet dibuka — bikin custom menu
-function onOpen() {
-  SpreadsheetApp.getUi()
-    .createMenu("Otomasi")
-    .addItem("Tandai gaji tinggi", "tandaiGajiTinggi")
-    .addItem("Reset format",       "resetFormat")
-    .addToUi();
-}
-```
-
-> Trigger `onEdit`/`onOpen` hanya bekerja kalau script **container-bound** (dibuat lewat **Extensions → Apps Script** dari dalam Sheet). Standalone script tidak punya konteks Sheet aktif.
-
----
-
-## 8. Reuse Kode di Banyak Spreadsheet
+## 7. Reuse Kode di Banyak Spreadsheet
 
 Skenario nyata: kode `tandaiGajiTinggi` yang kita buat sangat berguna, dan kita ingin **memakainya di banyak Sheet sekaligus** (Sheet Finance, Sheet HR, Sheet cabang Surabaya, dll) — tanpa copy-paste manual ke tiap project.
 
@@ -498,6 +471,35 @@ flowchart LR
 - **Library identifier** dibuat singkat (`OC`, `Util`, `HR`) — akan muncul di setiap pemakaian, panjang malah berisik.
 - **Pinned version vs HEAD**: untuk production pakai pinned version (mis. `v3`) supaya tidak kena breaking change tanpa sengaja. Untuk dev/test, pakai HEAD.
 - **Library tidak punya akses ke `SpreadsheetApp.getActive()`** — selalu kirim `sheetId` sebagai parameter, lalu library buka via `openById()`. Ini juga membuat library bisa dites tanpa attached ke Sheet manapun.
+
+---
+
+## 8. Trigger Sederhana — `onEdit` & `onOpen`
+
+(Pendalaman trigger ada di Modul 6. Di sini cukup pengenalan agar Anda lihat kemungkinannya.)
+
+> Catatan: kalau Anda pakai pola Library dari §7, ingat — `addItem(label, "namaFunction")` hanya menerima nama function yang ada di project container-bound itu sendiri. Untuk panggil function dari library, bungkus pakai stub lokal seperti contoh `menuTandai()` di §7.2.
+
+```javascript
+// Otomatis jalan saat user mengetik di sheet
+function onEdit(e) {
+  const range = e.range;
+  if (range.getColumn() === 4 && range.getValue() === "DONE") {
+    range.setBackground("#dcfce7");
+  }
+}
+
+// Otomatis jalan saat sheet dibuka — bikin custom menu
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu("Otomasi")
+    .addItem("Tandai gaji tinggi", "tandaiGajiTinggi")
+    .addItem("Reset format",       "resetFormat")
+    .addToUi();
+}
+```
+
+> Trigger `onEdit`/`onOpen` hanya bekerja kalau script **container-bound** (dibuat lewat **Extensions → Apps Script** dari dalam Sheet). Standalone script tidak punya konteks Sheet aktif.
 
 ---
 
