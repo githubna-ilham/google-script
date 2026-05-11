@@ -37,45 +37,7 @@ flowchart TD
 
 ## 2. Native UI — `SpreadsheetApp.getUi()`
 
-### 2.1 Alert dengan tombol
-
-```javascript
-function konfirmasiHapus() {
-  const ui = SpreadsheetApp.getUi();
-  const respon = ui.alert(
-    "Konfirmasi",
-    "Yakin mau menghapus baris terpilih?",
-    ui.ButtonSet.YES_NO
-  );
-
-  if (respon === ui.Button.YES) {
-    // ... eksekusi hapus
-    ui.alert("Berhasil", "Baris dihapus.", ui.ButtonSet.OK);
-  }
-}
-```
-
-### 2.2 Prompt — input dari user
-
-```javascript
-function tambahKaryawanCepat() {
-  const ui = SpreadsheetApp.getUi();
-  const respon = ui.prompt(
-    "Tambah Karyawan",
-    "Masukkan nama:",
-    ui.ButtonSet.OK_CANCEL
-  );
-
-  if (respon.getSelectedButton() === ui.Button.OK) {
-    const nama = respon.getResponseText().trim();
-    if (nama) {
-      SpreadsheetApp.getActiveSheet().appendRow([nama, "", "", new Date()]);
-    }
-  }
-}
-```
-
-### 2.3 Custom Menu
+### 2.1 Custom Menu
 
 Custom menu adalah **pintu masuk utama** untuk user akhir memakai automation kita. Dia muncul di toolbar Sheet (sebelah menu Help) saat Sheet dibuka — dan setiap item bisa men-trigger function manapun di project.
 
@@ -192,6 +154,44 @@ function onOpen() {
 > ⚠️ Hati-hati: nama function di `addItem` tetap harus **fixed string saat runtime** — peserta perlu tahu nama function-nya untuk dipanggil. Pattern ini umumnya dikombinasikan dengan switch/lookup table di handler.
 
 ---
+
+### 2.2 Alert dengan tombol
+
+```javascript
+function konfirmasiHapus() {
+  const ui = SpreadsheetApp.getUi();
+  const respon = ui.alert(
+    "Konfirmasi",
+    "Yakin mau menghapus baris terpilih?",
+    ui.ButtonSet.YES_NO
+  );
+
+  if (respon === ui.Button.YES) {
+    // ... eksekusi hapus
+    ui.alert("Berhasil", "Baris dihapus.", ui.ButtonSet.OK);
+  }
+}
+```
+
+### 2.3 Prompt — input dari user
+
+```javascript
+function tambahKaryawanCepat() {
+  const ui = SpreadsheetApp.getUi();
+  const respon = ui.prompt(
+    "Tambah Karyawan",
+    "Masukkan nama:",
+    ui.ButtonSet.OK_CANCEL
+  );
+
+  if (respon.getSelectedButton() === ui.Button.OK) {
+    const nama = respon.getResponseText().trim();
+    if (nama) {
+      SpreadsheetApp.getActiveSheet().appendRow([nama, "", "", new Date()]);
+    }
+  }
+}
+```
 
 ## 3. HTML Sidebar & Modal
 
