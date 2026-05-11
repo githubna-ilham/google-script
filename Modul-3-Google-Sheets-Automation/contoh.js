@@ -76,6 +76,65 @@ function contoh05_tulisBatch() {
 
 
 /* =========================================================================
+ * BAGIAN 2b — Perbandingan: per-cell (lambat) vs batch (cepat)
+ * Jalankan keduanya, lihat selisih durasinya di Execution log.
+ * ========================================================================= */
+
+// ❌ Versi LAMBAT — getValue/setValue per-cell dalam loop
+function contoh05a_tandaiGaji_lambat() {
+  const sheet = _getSpreadsheet().getSheetByName("Karyawan");
+  const lastRow = sheet.getLastRow();
+
+  const headers   = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const colGaji   = headers.indexOf("Gaji")   + 1;   // 1-indexed
+  const colStatus = headers.indexOf("Status") + 1;
+
+  const t0 = Date.now();
+  let roundTrips = 0;
+
+  for (let r = 2; r <= lastRow; r++) {
+    const gaji = sheet.getRange(r, colGaji).getValue();          roundTrips++;
+    const status = gaji >= 8000000 ? "Tinggi" : "Normal";
+    sheet.getRange(r, colStatus).setValue(status);                roundTrips++;
+  }
+
+  console.log(`[LAMBAT] ${Date.now() - t0} ms — ${roundTrips} round-trip`);
+}
+
+// ✓ Versi CEPAT — getValues/setValues batch
+function contoh05b_tandaiGaji_cepat() {
+  const sheet = _getSpreadsheet().getSheetByName("Karyawan");
+  const range = sheet.getDataRange();
+  const data  = range.getValues();                                // round-trip #1
+
+  const headers   = data[0];
+  const colGaji   = headers.indexOf("Gaji");                       // 0-indexed
+  const colStatus = headers.indexOf("Status");
+
+  const t0 = Date.now();
+
+  for (let i = 1; i < data.length; i++) {
+    data[i][colStatus] = data[i][colGaji] >= 8000000 ? "Tinggi" : "Normal";
+  }
+
+  range.setValues(data);                                           // round-trip #2
+
+  console.log(`[CEPAT ] ${Date.now() - t0} ms — 2 round-trip total`);
+}
+
+// Helper: jalankan dua-duanya berurutan
+function contoh05c_bandingkanLambatVsCepat() {
+  console.log("=== Round 1: Versi LAMBAT ===");
+  contoh05a_tandaiGaji_lambat();
+
+  console.log("\n=== Round 2: Versi CEPAT ===");
+  contoh05b_tandaiGaji_cepat();
+
+  console.log("\nKesimpulan: selisih kecil untuk 5 baris, tapi versi lambat akan menggila kalau data ratusan/ribuan baris.");
+}
+
+
+/* =========================================================================
  * BAGIAN 3 — Pola "Header → Object"
  * ========================================================================= */
 

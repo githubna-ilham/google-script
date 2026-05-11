@@ -154,29 +154,78 @@ flowchart TD
     style Benar fill:#dcfce7
 ```
 
-Contoh: tambah kolom baru "Status" berdasarkan gaji.
+Contoh: tambah kolom "Status" berdasarkan Gaji. Kita banding **dua versi**: lambat (per-cell) vs cepat (batch).
+
+#### ❌ Versi LAMBAT — `getValue` & `setValue` per-cell
 
 ```javascript
-function tandaiGajiTinggi() {
-  const sheet = SpreadsheetApp.openById("...").getSheetByName("Karyawan");
-  const range = sheet.getDataRange();           // semua data terisi
-  const data  = range.getValues();              // 1× round-trip
+function tandaiGajiTinggi_lambat() {
+  const sheet = SpreadsheetApp.openById("SHEET_ID").getSheetByName("Karyawan");
+  const lastRow = sheet.getLastRow();
 
-  // baris 0 = header
-  const headerRow = data[0];
-  const colGaji   = headerRow.indexOf("Gaji");
-  const colStatus = headerRow.indexOf("Status");
+  // Cari indeks kolom (1-indexed di Sheet API)
+  const headers   = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const colGaji   = headers.indexOf("Gaji")   + 1;
+  const colStatus = headers.indexOf("Status") + 1;
 
-  // proses di memori — tidak ada round-trip
-  for (let i = 1; i < data.length; i++) {
-    data[i][colStatus] = data[i][colGaji] >= 8000000 ? "Tinggi" : "Normal";
+  const t0 = Date.now();
+
+  for (let r = 2; r <= lastRow; r++) {                            // mulai dari baris 2 (skip header)
+    const gaji = sheet.getRange(r, colGaji).getValue();           // ← 1 round-trip baca
+    const status = gaji >= 8000000 ? "Tinggi" : "Normal";
+    sheet.getRange(r, colStatus).setValue(status);                // ← 1 round-trip tulis
   }
 
-  range.setValues(data);                         // 1× round-trip
+  console.log(`Lambat: ${Date.now() - t0} ms — ${(lastRow - 1) * 2} round-trip`);
 }
 ```
 
-Untuk 1000 baris, ini selesai dalam ~1 detik. Versi `getValue/setValue` per-cell bisa makan 30+ detik.
+**Untuk 5 baris**: 5 × 2 = **10 round-trip** ke server.
+**Untuk 1000 baris**: 2.000 round-trip → bisa **30+ detik**, kadang timeout di 6 menit.
+
+#### ✓ Versi CEPAT — `getValues` & `setValues` batch
+
+```javascript
+function tandaiGajiTinggi_cepat() {
+  const sheet = SpreadsheetApp.openById("SHEET_ID").getSheetByName("Karyawan");
+  const range = sheet.getDataRange();
+  const data  = range.getValues();                                // ← 1 round-trip baca SEMUA
+
+  const headers   = data[0];
+  const colGaji   = headers.indexOf("Gaji");                       // 0-indexed di array
+  const colStatus = headers.indexOf("Status");
+
+  const t0 = Date.now();
+
+  for (let i = 1; i < data.length; i++) {                          // proses di memori
+    data[i][colStatus] = data[i][colGaji] >= 8000000 ? "Tinggi" : "Normal";
+  }
+
+  range.setValues(data);                                           // ← 1 round-trip tulis SEMUA
+
+  console.log(`Cepat: ${Date.now() - t0} ms — 2 round-trip`);
+}
+```
+
+**Untuk berapapun baris**: tetap **2 round-trip** (1 baca + 1 tulis).
+**Untuk 1000 baris**: selesai dalam **~1 detik**.
+
+#### Perbandingan
+
+| Aspek | ❌ Lambat (per-cell) | ✓ Cepat (batch) |
+|---|---|---|
+| Round-trip untuk N baris | `2 × N` | **2 (konstan)** |
+| Untuk 5 baris | 10 round-trip | 2 round-trip |
+| Untuk 1000 baris | 2.000 round-trip → 30s+ | 2 round-trip → ~1s |
+| Skala | O(N) | **O(1)** |
+| Indeks kolom | **1-indexed** (untuk `getRange(r, c)`) | **0-indexed** (untuk array `data[i][c]`) |
+| Risiko timeout | Tinggi pada > 500 baris | Sangat rendah |
+
+> **Aturan**: kalau melihat `getValue`/`setValue` di dalam `for` loop → hampir selalu bug performa. Ubah jadi pola `getValues` → proses array → `setValues`.
+
+#### Bonus: ukur sendiri
+
+Kedua function di atas log durasinya. Tempel ke project Apps Script, isi `Karyawan` dengan data dummy (mis. duplicate 5 baris jadi 500), lalu Run kedua-duanya — bedanya akan terlihat sangat jelas di Execution log.
 
 ---
 
