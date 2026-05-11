@@ -377,6 +377,20 @@ function buatRapat() {
 }
 ```
 
+> **Format string `"2026-05-15T10:00:00+07:00"`** itu **ISO 8601**, dipecah jadi:
+> - `2026-05-15` — tanggal (YYYY-MM-DD)
+> - `T` — pemisah wajib antara tanggal & jam
+> - `10:00:00` — jam:menit:detik (24-jam)
+> - `+07:00` — offset zona waktu dari UTC (Indonesia Barat = +07:00, Indonesia Tengah = +08:00, Indonesia Timur = +09:00)
+>
+> **Kenapa wajib pakai offset?** Tanpa `+07:00`, JavaScript akan menganggap waktu lokal komputer/server — server Apps Script ada di US, jadi "jam 10:00 tanpa offset" bisa salah jadi jam 22:00 WIB. Selalu sertakan offset untuk hasil yang konsisten.
+>
+> Alternatif konstruksi tanpa string:
+> ```javascript
+> new Date(2026, 4, 15, 10, 0, 0)   // tahun, bulan (0-indexed!), tanggal, jam, menit, detik
+> // ⚠️ Bulan 0-indexed: 0=Jan, 4=Mei. Sumber bug klasik.
+> ```
+
 ### 4.3 Event seharian (all-day)
 
 ```javascript
