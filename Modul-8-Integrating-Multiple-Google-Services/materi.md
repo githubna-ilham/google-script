@@ -89,108 +89,31 @@ function ambilDataKurs() {
 
 ---
 
-## 4. Pola Project Nyata #1: Onboarding Karyawan Baru
-
-Skenario: HR submit form "karyawan baru". Sistem otomatis:
-1. Tambah ke Sheet `Karyawan-Master`.
-2. Bikin Google Doc "Welcome Letter" dari template, save di folder Drive `HR/Onboarding/<nama>`.
-3. Bikin event Calendar "First Day Orientation" di tanggal mulai.
-4. Kirim email welcome ke karyawan + notif ke manager.
-5. Catat semua langkah ke `Audit Log`.
-
-```mermaid
-flowchart TD
-    A["📝 Form Submit<br/>(onFormSubmit trigger)"]:::tr --> O["onboardingHandler(e)"]:::orch
-
-    O --> S1["1. Append Sheet<br/>Karyawan-Master"]:::s
-    O --> S2["2. Drive: bikin folder<br/>HR/Onboarding/&lt;nama&gt;"]:::s
-    O --> S3["3. Docs: copy template<br/>Welcome Letter, replace placeholder"]:::s
-    O --> S4["4. Calendar: bikin event<br/>First Day Orientation"]:::s
-    O --> S5["5. Email welcome<br/>ke karyawan + manager"]:::s
-    O --> S6["6. Audit Log<br/>(timestamp + status)"]:::s
-
-    S1 --> END([Selesai])
-    S2 --> END
-    S3 --> END
-    S4 --> END
-    S5 --> END
-    S6 --> END
-
-    classDef tr fill:#fef3c7,stroke:#f59e0b,stroke-width:2px
-    classDef orch fill:#dbeafe,stroke:#3b82f6,stroke-width:3px
-    classDef s fill:#dcfce7,stroke:#16a34a
-```
-
-Implementasi (high-level — detail di `contoh.js`):
-
-```javascript
-function onboardingHandler(e) {
-  const data = parseFormResponse(e.response);
-
-  try {
-    sheets_appendKaryawan(data);
-    const folder = drive_createOnboardingFolder(data.nama);
-    const docUrl = docs_generateWelcomeLetter(data, folder);
-    const eventId = calendar_createOrientation(data);
-    email_sendWelcome(data, docUrl);
-    audit_log("onboarding-success", data);
-  } catch (err) {
-    audit_log("onboarding-failed", { ...data, error: err.message });
-    throw err;   // re-throw supaya muncul di Executions
-  }
-}
-```
-
----
-
-## 5. Pola Project Nyata #2: Sales Pipeline Sync
-
-Skenario: setiap pagi jam 7, ambil data deal dari Sheet `Pipeline`, bikin laporan PDF, kirim ke manager.
-
-```mermaid
-flowchart TD
-    A["⏰ Time-driven 07:00"]:::tr --> O["dailyPipelineReport()"]:::orch
-
-    O --> S1["sheets_readPipeline<br/>(filter status=Open)"]:::s
-    S1 --> S2["docs_generateReport<br/>(summary + tabel deal)"]:::s
-    S2 --> S3["drive_exportPDF<br/>(simpan ke folder Reports)"]:::s
-    S3 --> S4["email_sendToManager<br/>(PDF attachment)"]:::s
-    S4 --> S5["sheets_logExecution"]:::s
-
-    classDef tr fill:#fef3c7,stroke:#f59e0b
-    classDef orch fill:#dbeafe,stroke:#3b82f6,stroke-width:2px
-    classDef s fill:#dcfce7,stroke:#16a34a
-```
-
----
-
-## 6. Error Handling & Logging
+## 4. Error Handling & Logging
 
 Multi-service workflow rentan terhadap kegagalan parsial (mis. Sheet sukses, tapi email gagal). Pola yang baik:
 
-### 6.1 Catch granular, log detail
+### 4.1 Catch granular, log detail
 
 ```javascript
-function onboardingHandler(data) {
+function cutiHandler(data) {
   const ctx = { stage: "init", data };
 
   try {
-    ctx.stage = "sheet";
-    sheets_appendKaryawan(data);
+    ctx.stage = "validasi-kuota";
+    const sisa = cuti_cekKuota(data.email);
+    if (sisa < data.jumlahHari) throw new Error("Kuota tidak cukup");
 
-    ctx.stage = "drive";
-    const folder = drive_createOnboardingFolder(data.nama);
+    ctx.stage = "sheet";
+    const cutiId = cuti_appendPengajuan(data);
 
     ctx.stage = "docs";
-    const docUrl = docs_generateWelcomeLetter(data, folder);
+    const docUrl = docs_generateFormCuti(data);
 
-    ctx.stage = "calendar";
-    calendar_createOrientation(data);
+    ctx.stage = "email-manager";
+    email_notifManagerApproval(data, cutiId);
 
-    ctx.stage = "email";
-    email_sendWelcome(data, docUrl);
-
-    audit_log("success", { ...ctx, result: "all-stages" });
+    audit_log("success", { ...ctx, cutiId, docUrl });
   } catch (err) {
     audit_log("failed", { ...ctx, error: err.message, stack: err.stack });
     throw err;
@@ -198,9 +121,9 @@ function onboardingHandler(data) {
 }
 ```
 
-`ctx.stage` membantu debug — kalau gagal di stage `"docs"`, langsung tahu di mana.
+`ctx.stage` membantu debug — kalau gagal di stage `"docs"`, langsung tahu di mana, dan audit log juga menyimpan stage terakhir sebelum gagal.
 
-### 6.2 Sheet sebagai Audit Log
+### 4.2 Sheet sebagai Audit Log
 
 ```javascript
 function audit_log(status, payload) {
@@ -217,7 +140,7 @@ function audit_log(status, payload) {
 }
 ```
 
-### 6.3 Notif ke admin saat error
+### 4.3 Notif ke admin saat error
 
 ```javascript
 function audit_logFailure(payload) {
@@ -232,7 +155,7 @@ function audit_logFailure(payload) {
 
 ---
 
-## 7. Idempotency di Workflow Multi-Step
+## 5. Idempotency di Workflow Multi-Step
 
 Trigger bisa dipanggil dua kali (network glitch, retry, manual run). Workflow harus aman dijalankan ulang.
 
@@ -243,11 +166,11 @@ Trigger bisa dipanggil dua kali (network glitch, retry, manual run). Workflow ha
 3. **Atomic check-then-do**: di Sheet, gunakan `LockService` saat baca → cek → tulis status → release.
 
 ```javascript
-function onboardingHandlerIdempotent(e) {
+function cutiHandlerIdempotent(e) {
   const responseId = e.response.getId();   // unik per submission
 
   const cache = CacheService.getScriptCache();
-  if (cache.get(`onboarding:${responseId}`)) {
+  if (cache.get(`cuti:${responseId}`)) {
     console.log("Sudah diproses. Skip.");
     return;
   }
@@ -257,10 +180,10 @@ function onboardingHandlerIdempotent(e) {
   lock.tryLock(10000);
 
   try {
-    if (cache.get(`onboarding:${responseId}`)) return;   // double-check
+    if (cache.get(`cuti:${responseId}`)) return;   // double-check
 
-    onboardingHandler(parseFormResponse(e.response));
-    cache.put(`onboarding:${responseId}`, "1", 21600);
+    cutiHandler(parseFormResponse(e.response));
+    cache.put(`cuti:${responseId}`, "1", 21600);
   } finally {
     lock.releaseLock();
   }
@@ -269,7 +192,7 @@ function onboardingHandlerIdempotent(e) {
 
 ---
 
-## 8. Performance — Hindari N+1 Round-Trip
+## 6. Performance — Hindari N+1 Round-Trip
 
 Kalau orchestrator memanggil 10 helper, masing-masing baca Sheet 1×, total 10× round-trip yang sama. Pola lebih baik: **read-once, share via parameter**.
 
@@ -293,7 +216,7 @@ function dailyReportV2() {
 
 ---
 
-## 9. Mini-Project: Sistem Cuti Lengkap
+## 7. Project Nyata: Sistem Cuti Lengkap
 
 Use case lengkap multi-service:
 
@@ -333,7 +256,7 @@ Implementasi lengkap di `contoh.js` (`pengajuanCutiHandler`, `doGet` untuk appro
 
 ---
 
-## 10. Best Practices Akhir
+## 8. Best Practices Akhir
 
 1. **Modularkan** ke beberapa file `.gs` per concern. `Main.gs` cuma orchestrator + trigger.
 2. **Setiap helper return value yang berguna** (URL, ID) — bukan cuma side-effect, supaya bisa di-chain.
@@ -348,7 +271,7 @@ Implementasi lengkap di `contoh.js` (`pengajuanCutiHandler`, `doGet` untuk appro
 
 ---
 
-## 11. Penutup
+## 9. Penutup
 
 **Yang harus dikuasai sebelum lanjut**:
 
@@ -358,6 +281,6 @@ Implementasi lengkap di `contoh.js` (`pengajuanCutiHandler`, `doGet` untuk appro
 - [ ] Paham pola idempotency dengan response ID + cache.
 - [ ] Bisa implement audit log dan error handling granular.
 - [ ] Sadar trade-off N+1 round-trip — read once, compute many.
-- [ ] Bisa bangun workflow end-to-end seperti onboarding atau cuti.
+- [ ] Bisa bangun workflow end-to-end seperti Sistem Cuti Lengkap.
 
 **Selanjutnya: Capstone Project (di folder `Capstone-Project`).**
