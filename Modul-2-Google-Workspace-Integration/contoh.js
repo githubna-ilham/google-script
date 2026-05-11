@@ -196,8 +196,8 @@ function contoh11_eventHariIni() {
 
   console.log(`Anda punya ${events.length} event hari ini:`);
   events.forEach((e) => {
-    const jam = e.getStartTime().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
-    console.log(`  ${jam} — ${e.getTitle()}`);
+    const stamp = e.getStartTime().toLocaleString("id-ID");
+    console.log(`  ${stamp} — ${e.getTitle()}`);
   });
 }
 

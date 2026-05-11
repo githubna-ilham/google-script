@@ -430,7 +430,7 @@ function eventHariIni() {
   const events = cal.getEventsForDay(new Date());
 
   events.forEach((e) => {
-    console.log(`${e.getStartTime().toLocaleTimeString("id-ID")} — ${e.getTitle()}`);
+    console.log(`${e.getStartTime().toLocaleString("id-ID")} — ${e.getTitle()}`);
   });
 }
 
