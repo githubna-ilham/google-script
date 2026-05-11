@@ -392,24 +392,23 @@ function onOpen() {
 
 Skenario nyata: kode `tandaiGajiTinggi` yang kita buat sangat berguna, dan kita ingin **memakainya di banyak Sheet sekaligus** (Sheet Finance, Sheet HR, Sheet cabang Surabaya, dll) — tanpa copy-paste manual ke tiap project.
 
-Apps Script menawarkan **3 pendekatan**, dari yang paling cepat sampai paling rapi.
+Apps Script menawarkan **2 pendekatan utama** untuk kebutuhan ini.
 
 ```mermaid
 flowchart TD
     Q["Kode mau dipakai di banyak Sheet"]:::q
     Q --> A["Cara 1: Copy-paste"]:::a
     Q --> B["Cara 2: Library"]:::b
-    Q --> C["Cara 3: Web App"]:::c
 
     A --> A1["Cepat, tapi update<br/>harus manual di tiap Sheet"]
     B --> B1["Central code, version-controlled<br/>update sekali ➜ semua Sheet ikut"]
-    C --> C1["Untuk panggil dari luar Apps Script<br/>(lintas platform / lintas org)"]
 
     classDef q fill:#fef3c7,stroke:#f59e0b,stroke-width:2px
     classDef a fill:#fee2e2,stroke:#dc2626
     classDef b fill:#dcfce7,stroke:#16a34a,stroke-width:2px
-    classDef c fill:#dbeafe,stroke:#3b82f6
 ```
+
+> Ada juga cara ketiga lewat **Web App + `UrlFetchApp`** untuk integrasi lintas platform. Tapi pola itu lebih relevan saat kita butuh memanggil kode dari **luar Apps Script** (Slack, server eksternal, dll), dan akan dibahas lengkap di **Modul 7**.
 
 ### 8.1 Cara 1 — Copy-Paste (paling sederhana)
 
@@ -483,41 +482,17 @@ flowchart LR
 **Pros**: kode tersentralisasi. Update di library sekali → semua Sheet ikut update (kalau pakai versi `HEAD`) atau bertahap (kalau pakai pinned version).
 **Cons**: setup awal sedikit lebih panjang, perlu disiplin versioning.
 
-### 8.3 Cara 3 — Web App (untuk lintas platform)
+### 8.3 Perbandingan
 
-Standalone di-deploy sebagai Web App, dipanggil dari Sheet manapun via `UrlFetchApp`. Detailnya di **Modul 7**.
+| Aspek | Copy-paste | Library |
+|---|---|---|
+| Setup awal | 0 | Sedang |
+| Update logic ke semua Sheet | Manual per Sheet | Otomatis (atau versi-pin) |
+| Versioning | Tidak ada | Built-in |
+| Cocok untuk | 1–2 Sheet, project kecil | Banyak Sheet, satu organisasi |
+| Performance | Native (paling cepat) | Native + sedikit overhead resolve |
 
-```javascript
-// Container-bound Sheet (cara dipanggil)
-function menuTandai() {
-  const URL = "https://script.google.com/macros/s/.../exec";
-  UrlFetchApp.fetch(URL, {
-    method: "post",
-    contentType: "application/json",
-    payload: JSON.stringify({
-      action:    "tandaiGajiTinggi",
-      sheetId:   SpreadsheetApp.getActiveSpreadsheet().getId(),
-      sheetName: "Karyawan"
-    })
-  });
-}
-```
-
-**Pros**: bisa dipanggil dari **luar Apps Script** juga (Slack, server Node.js, browser, Zapier).
-**Cons**: ada latensi HTTP, perlu setup deployment + manage permission "Anyone" atau auth.
-
-### 8.4 Perbandingan
-
-| Aspek | Copy-paste | Library | Web App |
-|---|---|---|---|
-| Setup awal | 0 | Sedang | Sedang |
-| Update logic ke semua Sheet | Manual per Sheet | Otomatis (atau versi-pin) | Otomatis |
-| Versioning | Tidak ada | Built-in | Manual via deployment |
-| Bisa dipanggil dari luar Apps Script | Tidak | Tidak | **Ya** |
-| Cocok untuk | 1–2 Sheet, project kecil | Banyak Sheet, satu organisasi | Lintas platform, public API |
-| Performance | Native (paling cepat) | Native + sedikit overhead resolve | Ada HTTP round-trip |
-
-### 8.5 Tip Praktis
+### 8.4 Tip Praktis
 
 - **Mulai dari copy-paste**, naik ke library kalau Sheet sudah > 2.
 - **Library identifier** dibuat singkat (`OC`, `Util`, `HR`) — akan muncul di setiap pemakaian, panjang malah berisik.
@@ -790,7 +765,7 @@ function kirimNotifPesananSelesai() {
 - [ ] Tahu adanya `onEdit` / `onOpen` (detail lebih jauh di Modul 6).
 - [ ] Bisa bikin chart (column/pie/bar) dari kode pakai builder `sheet.newChart()`.
 - [ ] Tahu pola "rebuild chart" untuk dashboard auto-update.
-- [ ] Tahu 3 cara reuse kode antar Sheet: copy-paste, Library, Web App — dan kapan pilih masing-masing.
+- [ ] Tahu 2 cara reuse kode antar Sheet: copy-paste vs Library, dan kapan pilih masing-masing.
 
 **Tugas wajib sebelum lanjut**:
 Kerjakan `latihan.md`. Siapkan **satu Google Sheet baru** untuk latihan, dengan data dummy yang formatnya mengikuti template di petunjuk latihan.
