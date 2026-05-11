@@ -388,7 +388,145 @@ function onOpen() {
 
 ---
 
-## 8. Chart & Visualisasi
+## 8. Reuse Kode di Banyak Spreadsheet
+
+Skenario nyata: kode `tandaiGajiTinggi` yang kita buat sangat berguna, dan kita ingin **memakainya di banyak Sheet sekaligus** (Sheet Finance, Sheet HR, Sheet cabang Surabaya, dll) — tanpa copy-paste manual ke tiap project.
+
+Apps Script menawarkan **3 pendekatan**, dari yang paling cepat sampai paling rapi.
+
+```mermaid
+flowchart TD
+    Q["Kode mau dipakai di banyak Sheet"]:::q
+    Q --> A["Cara 1: Copy-paste"]:::a
+    Q --> B["Cara 2: Library"]:::b
+    Q --> C["Cara 3: Web App"]:::c
+
+    A --> A1["Cepat, tapi update<br/>harus manual di tiap Sheet"]
+    B --> B1["Central code, version-controlled<br/>update sekali ➜ semua Sheet ikut"]
+    C --> C1["Untuk panggil dari luar Apps Script<br/>(lintas platform / lintas org)"]
+
+    classDef q fill:#fef3c7,stroke:#f59e0b,stroke-width:2px
+    classDef a fill:#fee2e2,stroke:#dc2626
+    classDef b fill:#dcfce7,stroke:#16a34a,stroke-width:2px
+    classDef c fill:#dbeafe,stroke:#3b82f6
+```
+
+### 8.1 Cara 1 — Copy-Paste (paling sederhana)
+
+Buka tiap Sheet → `Extensions → Apps Script` → paste kode → save. Selesai.
+
+**Pros**: 0 setup, langsung jalan.
+**Cons**: tiap update logic, harus copy ulang ke **semua** Sheet. Cocok untuk 1–2 Sheet, tidak skala.
+
+### 8.2 Cara 2 — Library (recommended untuk reuse serius)
+
+Publish standalone script sebagai **Library**, import di tiap container-bound Sheet, panggil function-nya.
+
+```mermaid
+flowchart LR
+    Std["Standalone Script<br/>'OtomasiCore'<br/>(berisi tandaiGajiTinggi)"]:::std
+    Std -->|Deploy as Library| Pub[("Published Version")]
+    Pub -->|import via Script ID| C1["Sheet Finance"]:::c
+    Pub -->|import via Script ID| C2["Sheet HR"]:::c
+    Pub -->|import via Script ID| C3["Sheet Cabang Surabaya"]:::c
+
+    classDef std fill:#fef3c7,stroke:#f59e0b,stroke-width:2px
+    classDef c fill:#dbeafe,stroke:#3b82f6
+```
+
+**Langkah di standalone script (yang akan dipakai bersama):**
+
+1. Buka [script.google.com](https://script.google.com), bikin project baru `OtomasiCore`.
+2. Tulis function yang reusable:
+   ```javascript
+   // OtomasiCore — function bersama
+   function tandaiGajiTinggi(sheetId, sheetName) {
+     const sheet = SpreadsheetApp.openById(sheetId).getSheetByName(sheetName);
+     const range = sheet.getDataRange();
+     const data  = range.getValues();
+     const colGaji   = data[0].indexOf("Gaji");
+     const colStatus = data[0].indexOf("Status");
+
+     for (let i = 1; i < data.length; i++) {
+       data[i][colStatus] = data[i][colGaji] >= 8000000 ? "Tinggi" : "Normal";
+     }
+     range.setValues(data);
+   }
+   ```
+3. **Project Settings → copy Script ID**.
+4. **Deploy → New deployment → Type: Library → Save**. (Versi awal akan jadi `Version 1`.)
+
+> ⚠️ **Setiap update kode di library, harus deploy versi baru** (`Deploy → Manage deployments → Edit → New version`). Container yang import bisa pilih: pakai versi yang di-pin atau auto-pakai versi `HEAD`.
+
+**Langkah di container-bound Sheet (yang akan pakai library):**
+
+1. Buka Sheet → `Extensions → Apps Script`.
+2. Klik **+** di sidebar **Libraries** → paste Script ID `OtomasiCore` → pilih versi → kasih identifier (mis. `OC`) → Add.
+3. Pakai function library lewat identifier:
+   ```javascript
+   function onOpen() {
+     SpreadsheetApp.getUi()
+       .createMenu("Otomasi")
+       .addItem("Tandai gaji tinggi", "menuTandai")    // ← stub di sini
+       .addToUi();
+   }
+
+   // Stub lokal — diperlukan karena addItem tidak menerima "OC.tandaiGajiTinggi"
+   function menuTandai() {
+     const ss = SpreadsheetApp.getActiveSpreadsheet();
+     OC.tandaiGajiTinggi(ss.getId(), "Karyawan");      // ← panggil ke library
+   }
+   ```
+
+**Kenapa butuh stub `menuTandai`?** Karena `addItem(label, functionName)` cuma menerima nama function yang ada di **project itu sendiri** (sebagai string), bukan path `"OC.tandaiGajiTinggi"`. Stub adalah jembatan.
+
+**Pros**: kode tersentralisasi. Update di library sekali → semua Sheet ikut update (kalau pakai versi `HEAD`) atau bertahap (kalau pakai pinned version).
+**Cons**: setup awal sedikit lebih panjang, perlu disiplin versioning.
+
+### 8.3 Cara 3 — Web App (untuk lintas platform)
+
+Standalone di-deploy sebagai Web App, dipanggil dari Sheet manapun via `UrlFetchApp`. Detailnya di **Modul 7**.
+
+```javascript
+// Container-bound Sheet (cara dipanggil)
+function menuTandai() {
+  const URL = "https://script.google.com/macros/s/.../exec";
+  UrlFetchApp.fetch(URL, {
+    method: "post",
+    contentType: "application/json",
+    payload: JSON.stringify({
+      action:    "tandaiGajiTinggi",
+      sheetId:   SpreadsheetApp.getActiveSpreadsheet().getId(),
+      sheetName: "Karyawan"
+    })
+  });
+}
+```
+
+**Pros**: bisa dipanggil dari **luar Apps Script** juga (Slack, server Node.js, browser, Zapier).
+**Cons**: ada latensi HTTP, perlu setup deployment + manage permission "Anyone" atau auth.
+
+### 8.4 Perbandingan
+
+| Aspek | Copy-paste | Library | Web App |
+|---|---|---|---|
+| Setup awal | 0 | Sedang | Sedang |
+| Update logic ke semua Sheet | Manual per Sheet | Otomatis (atau versi-pin) | Otomatis |
+| Versioning | Tidak ada | Built-in | Manual via deployment |
+| Bisa dipanggil dari luar Apps Script | Tidak | Tidak | **Ya** |
+| Cocok untuk | 1–2 Sheet, project kecil | Banyak Sheet, satu organisasi | Lintas platform, public API |
+| Performance | Native (paling cepat) | Native + sedikit overhead resolve | Ada HTTP round-trip |
+
+### 8.5 Tip Praktis
+
+- **Mulai dari copy-paste**, naik ke library kalau Sheet sudah > 2.
+- **Library identifier** dibuat singkat (`OC`, `Util`, `HR`) — akan muncul di setiap pemakaian, panjang malah berisik.
+- **Pinned version vs HEAD**: untuk production pakai pinned version (mis. `v3`) supaya tidak kena breaking change tanpa sengaja. Untuk dev/test, pakai HEAD.
+- **Library tidak punya akses ke `SpreadsheetApp.getActive()`** — selalu kirim `sheetId` sebagai parameter, lalu library buka via `openById()`. Ini juga membuat library bisa dites tanpa attached ke Sheet manapun.
+
+---
+
+## 9. Chart & Visualisasi
 
 Selain manipulasi data, Apps Script juga bisa **bikin, update, dan hapus chart** di Sheet secara programatik. Cocok untuk auto-update dashboard tanpa harus klik manual.
 
@@ -572,7 +710,7 @@ Pola ini bisa di-trigger oleh `onEdit`, `onFormSubmit`, atau time-driven (Modul 
 
 ---
 
-## 9. Mini-Project — Sinkronisasi Sheet → Email
+## 10. Mini-Project — Sinkronisasi Sheet → Email
 
 Skenario: Sheet "Pesanan" punya kolom `Status`. Tiap baris yang baru saja diubah jadi `Selesai` dikirim email konfirmasi ke kolom `Email Customer`, lalu kolom `Notif Terkirim` diisi tanggal hari ini.
 
@@ -638,7 +776,7 @@ function kirimNotifPesananSelesai() {
 
 ---
 
-## 10. Penutup
+## 11. Penutup
 
 **Yang harus dikuasai sebelum lanjut**:
 
@@ -652,6 +790,7 @@ function kirimNotifPesananSelesai() {
 - [ ] Tahu adanya `onEdit` / `onOpen` (detail lebih jauh di Modul 6).
 - [ ] Bisa bikin chart (column/pie/bar) dari kode pakai builder `sheet.newChart()`.
 - [ ] Tahu pola "rebuild chart" untuk dashboard auto-update.
+- [ ] Tahu 3 cara reuse kode antar Sheet: copy-paste, Library, Web App — dan kapan pilih masing-masing.
 
 **Tugas wajib sebelum lanjut**:
 Kerjakan `latihan.md`. Siapkan **satu Google Sheet baru** untuk latihan, dengan data dummy yang formatnya mengikuti template di petunjuk latihan.
