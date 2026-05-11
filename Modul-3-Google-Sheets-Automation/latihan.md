@@ -5,6 +5,8 @@
 1. Buat satu Google Sheet baru, beri nama `Latihan-M3`. Copy ID-nya.
 2. Buat **dua tab**: `Penjualan` dan `Produk`.
 
+> 📋 **Struktur lengkap tab + sample data** ada di [`template-spreadsheet.md`](./template-spreadsheet.md) (Bagian B). Tinggal copy-paste atau import dari CSV yang sudah disediakan.
+
 ### Tab `Penjualan`
 
 | ID Transaksi | Tanggal     | Customer    | Email Customer    | Produk    | Qty | Harga Satuan | Status        | Notif Terkirim |

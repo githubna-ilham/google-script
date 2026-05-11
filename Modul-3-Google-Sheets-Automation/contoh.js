@@ -2,19 +2,12 @@
  * Modul 3 — Google Sheets Automation
  *
  * Cara pakai:
- *   1. Buat Google Sheet baru, beri nama "Latihan Modul 3".
- *   2. Buat tab bernama "Karyawan" dengan header & data berikut:
- *
- *        | Nama  | Divisi    | Gaji    | Status |
- *        | Sari  | Finance   | 8000000 |        |
- *        | Budi  | Marketing | 7500000 |        |
- *        | Tina  | Finance   | 9000000 |        |
- *        | Andi  | IT        | 9500000 |        |
- *        | Rina  | HR        | 6500000 |        |
- *
- *   3. Buka Apps Script editor. Bisa lewat Extensions → Apps Script
+ *   1. Setup spreadsheet sesuai template-spreadsheet.md di folder ini.
+ *      Wajib ada tab "Karyawan" (untuk contoh01–11) dan "Pesanan" (untuk
+ *      mini-project contoh12).
+ *   2. Buka Apps Script editor — lewat Extensions → Apps Script
  *      (container-bound) atau standalone di script.google.com (set SHEET_ID).
- *   4. Copy file ini ke Code.gs, set SHEET_ID kalau pakai standalone, lalu Run.
+ *   3. Copy file ini ke Code.gs, set SHEET_ID kalau pakai standalone, lalu Run.
  */
 
 // =========================================================================

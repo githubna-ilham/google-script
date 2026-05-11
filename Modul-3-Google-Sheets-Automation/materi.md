@@ -2,6 +2,8 @@
 
 Sheets adalah service yang **paling sering** dipakai di Apps Script. Kalau Modul 2 mengenalkan tiga service horizontal (Drive/Docs/Calendar), Modul 3 menggali **dalam** ke satu service yang jadi backbone hampir setiap project otomatisasi: Google Sheets.
 
+> 📊 **Sebelum mulai**, siapkan spreadsheet template di [`template-spreadsheet.md`](./template-spreadsheet.md). File itu berisi struktur tab + sample data yang dipakai di seluruh contoh & latihan modul ini — biar Anda tidak menebak-nebak format datanya.
+
 ---
 
 ## 1. Hierarki Object Sheets
