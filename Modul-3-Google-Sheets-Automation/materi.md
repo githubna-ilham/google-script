@@ -339,7 +339,191 @@ function onOpen() {
 
 ---
 
-## 8. Mini-Project — Sinkronisasi Sheet → Email
+## 8. Chart & Visualisasi
+
+Selain manipulasi data, Apps Script juga bisa **bikin, update, dan hapus chart** di Sheet secara programatik. Cocok untuk auto-update dashboard tanpa harus klik manual.
+
+### 8.1 Pola umum — Chart Builder
+
+Chart dibuat lewat **builder pattern**: rangkai konfigurasi step-by-step, lalu `.build()` di akhir.
+
+```mermaid
+flowchart LR
+    A["sheet.newChart()"]:::a
+    --> B[".setChartType(...)<br/>.addRange(range)<br/>.setPosition(...)<br/>.setOption(...)"]:::b
+    --> C[".build()"]:::c
+    --> D["sheet.insertChart(chart)"]:::d
+
+    classDef a fill:#fef3c7,stroke:#f59e0b
+    classDef b fill:#dbeafe,stroke:#3b82f6
+    classDef c fill:#dcfce7,stroke:#16a34a
+    classDef d fill:#fce7f3,stroke:#ec4899
+```
+
+### 8.2 Chart Kolom (Column Chart) — yang paling sering
+
+```javascript
+function bikinChartKolom() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Karyawan");
+
+  const chart = sheet.newChart()
+    .setChartType(Charts.ChartType.COLUMN)
+    .addRange(sheet.getRange("A1:C6"))    // header + data (Nama, Divisi, Gaji)
+    .setPosition(2, 6, 0, 0)               // anchor di sel F2
+    .setOption("title", "Gaji per Karyawan")
+    .setOption("hAxis.title", "Nama")
+    .setOption("vAxis.title", "Gaji (Rp)")
+    .setOption("legend", { position: "none" })
+    .build();
+
+  sheet.insertChart(chart);
+  console.log("Chart kolom dibuat.");
+}
+```
+
+> **Parameter `setPosition(anchorRow, anchorCol, offsetX, offsetY)`**: chart akan menempel di sel `(anchorRow, anchorCol)`, dengan offset pixel X/Y dari sel itu. Untuk default, pakai `(row, col, 0, 0)`.
+
+### 8.3 Jenis chart yang sering dipakai
+
+```javascript
+// Pie chart — proporsi
+sheet.newChart()
+  .setChartType(Charts.ChartType.PIE)
+  .addRange(sheet.getRange("A1:B6"))   // 2 kolom: label + value
+  .setOption("title", "Komposisi per Divisi")
+  .setPosition(2, 6, 0, 0)
+  .build();
+
+// Line chart — tren waktu
+sheet.newChart()
+  .setChartType(Charts.ChartType.LINE)
+  .addRange(sheet.getRange("A1:B30"))   // tanggal di kolom A, nilai di B
+  .setOption("title", "Tren Penjualan Harian")
+  .setPosition(2, 6, 0, 0)
+  .build();
+
+// Bar chart — horizontal
+sheet.newChart()
+  .setChartType(Charts.ChartType.BAR)
+  .addRange(sheet.getRange("A1:B6"))
+  .setPosition(2, 6, 0, 0)
+  .build();
+
+// Area chart
+.setChartType(Charts.ChartType.AREA)
+
+// Scatter
+.setChartType(Charts.ChartType.SCATTER)
+
+// Combo (mix bar + line)
+.setChartType(Charts.ChartType.COMBO)
+```
+
+**Tipe chart yang tersedia** (`Charts.ChartType.XXX`):
+`COLUMN`, `BAR`, `LINE`, `AREA`, `PIE`, `SCATTER`, `COMBO`, `HISTOGRAM`, `TABLE`, `GAUGE`, `RADAR`, `WATERFALL`.
+
+### 8.4 Opsi styling yang sering dipakai
+
+Pakai `.setOption(key, value)`. Beberapa opsi penting:
+
+| Opsi | Fungsi | Contoh |
+|---|---|---|
+| `title` | Judul chart | `"Penjualan 2026"` |
+| `legend` | Posisi legend | `{ position: "right" }` / `"none"` / `"top"` |
+| `hAxis.title` / `vAxis.title` | Label sumbu | `"Bulan"`, `"Nilai (Rp)"` |
+| `colors` | Warna seri | `["#3b82f6", "#16a34a", "#f59e0b"]` |
+| `backgroundColor` | Warna background | `"#ffffff"` atau `"transparent"` |
+| `width` / `height` | Ukuran (pixel) | `600`, `400` |
+| `is3D` | 3D effect (pie/column) | `true` |
+| `pieHole` | Donut chart (0–0.9) | `0.4` |
+
+```javascript
+sheet.newChart()
+  .setChartType(Charts.ChartType.PIE)
+  .addRange(sheet.getRange("A1:B6"))
+  .setPosition(2, 6, 0, 0)
+  .setOption("title", "Distribusi Gaji per Divisi")
+  .setOption("pieHole", 0.4)                              // jadi donut
+  .setOption("colors", ["#3b82f6", "#16a34a", "#f59e0b", "#ec4899", "#8b5cf6"])
+  .setOption("legend", { position: "right", textStyle: { fontSize: 12 } })
+  .setOption("width", 500)
+  .setOption("height", 350)
+  .build();
+```
+
+### 8.5 Update Chart yang Sudah Ada
+
+Daripada hapus-bikin-baru tiap update, kita bisa edit chart yang sudah ada:
+
+```javascript
+function updateChartPertama() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Karyawan");
+  const charts = sheet.getCharts();
+  if (charts.length === 0) {
+    console.log("Belum ada chart. Bikin dulu.");
+    return;
+  }
+
+  const chartLama = charts[0];
+  const chartBaru = chartLama.modify()
+    .setOption("title", "Gaji per Karyawan (UPDATED)")
+    .setOption("colors", ["#dc2626"])
+    .build();
+
+  sheet.updateChart(chartBaru);
+  console.log("Chart di-update.");
+}
+```
+
+### 8.6 Hapus Chart
+
+```javascript
+function hapusSemuaChart() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Karyawan");
+  sheet.getCharts().forEach((c) => sheet.removeChart(c));
+  console.log("Semua chart dihapus.");
+}
+```
+
+### 8.7 Pola: "Rebuild Chart" untuk Dashboard Auto-update
+
+Trick yang sering dipakai untuk dashboard: **hapus chart lama, bikin baru** tiap kali data refresh. Lebih simpel daripada `.modify()` kalau data range juga ikut berubah.
+
+```javascript
+function refreshDashboardChart() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Dashboard");
+
+  // 1. Hapus chart lama (kalau ada)
+  sheet.getCharts().forEach((c) => sheet.removeChart(c));
+
+  // 2. (Re)hitung data agregasi
+  hitungAgregasi();   // misal: tulis ke A1:B6
+
+  // 3. Bikin chart baru dengan range yang up-to-date
+  const chart = sheet.newChart()
+    .setChartType(Charts.ChartType.COLUMN)
+    .addRange(sheet.getRange("A1:B6"))
+    .setPosition(8, 1, 0, 0)
+    .setOption("title", "Refreshed: " + new Date().toLocaleString("id-ID"))
+    .build();
+
+  sheet.insertChart(chart);
+}
+```
+
+Pola ini bisa di-trigger oleh `onEdit`, `onFormSubmit`, atau time-driven (Modul 6) supaya dashboard selalu mencerminkan data terbaru.
+
+### 8.8 Tips & Pitfall
+
+- **Range harus include header** kalau ingin chart pakai nama kolom sebagai legend/label.
+- **Chart adalah object terpisah dari data** — kalau kolom data dihapus, chart bisa tampil "broken". Lebih aman `updateChart()` atau rebuild ketimbang biarkan stale.
+- **`addRange()` bisa dipanggil lebih dari sekali** untuk multi-series — chart akan punya beberapa garis/batang sekaligus.
+- **Untuk pie chart**, range cukup 2 kolom (label + value). Untuk column/bar/line bisa multi-kolom.
+- **Performance**: bikin/update chart cukup mahal. Untuk dashboard yang sering refresh, batasi jumlah chart (3–5 sudah cukup) dan pisahkan ke trigger time-driven, jangan setiap onEdit.
+
+---
+
+## 9. Mini-Project — Sinkronisasi Sheet → Email
 
 Skenario: Sheet "Pesanan" punya kolom `Status`. Tiap baris yang baru saja diubah jadi `Selesai` dikirim email konfirmasi ke kolom `Email Customer`, lalu kolom `Notif Terkirim` diisi tanggal hari ini.
 
@@ -405,7 +589,7 @@ function kirimNotifPesananSelesai() {
 
 ---
 
-## 9. Penutup
+## 10. Penutup
 
 **Yang harus dikuasai sebelum lanjut**:
 
@@ -417,6 +601,8 @@ function kirimNotifPesananSelesai() {
 - [ ] Bisa append baris dan cari baris by value.
 - [ ] Bisa bikin Custom Function untuk dipanggil sebagai formula.
 - [ ] Tahu adanya `onEdit` / `onOpen` (detail lebih jauh di Modul 6).
+- [ ] Bisa bikin chart (column/pie/bar) dari kode pakai builder `sheet.newChart()`.
+- [ ] Tahu pola "rebuild chart" untuk dashboard auto-update.
 
 **Tugas wajib sebelum lanjut**:
 Kerjakan `latihan.md`. Siapkan **satu Google Sheet baru** untuk latihan, dengan data dummy yang formatnya mengikuti template di petunjuk latihan.

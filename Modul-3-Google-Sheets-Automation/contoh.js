@@ -229,7 +229,117 @@ function onOpen() {
 
 
 /* =========================================================================
- * BAGIAN 8 — Mini-project: Notif pesanan selesai
+ * BAGIAN 8 — Chart & Visualisasi
+ * ========================================================================= */
+
+function contoh13_chartKolom() {
+  const sheet = _getSpreadsheet().getSheetByName("Karyawan");
+
+  // Hapus chart lama supaya tidak menumpuk
+  sheet.getCharts().forEach((c) => sheet.removeChart(c));
+
+  const chart = sheet.newChart()
+    .setChartType(Charts.ChartType.COLUMN)
+    .addRange(sheet.getRange("A1:C6"))   // Nama, Divisi, Gaji
+    .setPosition(2, 6, 0, 0)              // anchor di F2
+    .setOption("title", "Gaji per Karyawan")
+    .setOption("hAxis.title", "Karyawan")
+    .setOption("vAxis.title", "Gaji (Rp)")
+    .setOption("legend", { position: "none" })
+    .setOption("colors", ["#3b82f6"])
+    .build();
+
+  sheet.insertChart(chart);
+  console.log("Chart kolom dibuat di F2.");
+}
+
+function contoh14_chartPieDonut() {
+  const sheet = _getSpreadsheet().getSheetByName("Karyawan");
+  sheet.getCharts().forEach((c) => sheet.removeChart(c));
+
+  // Pie chart butuh 2 kolom: label + value → pakai Nama + Gaji
+  const chart = sheet.newChart()
+    .setChartType(Charts.ChartType.PIE)
+    .addRange(sheet.getRange("A1:A6"))   // Nama
+    .addRange(sheet.getRange("C1:C6"))   // Gaji
+    .setPosition(2, 6, 0, 0)
+    .setOption("title", "Proporsi Gaji per Karyawan")
+    .setOption("pieHole", 0.4)            // donut
+    .setOption("colors", ["#3b82f6", "#16a34a", "#f59e0b", "#ec4899", "#8b5cf6"])
+    .setOption("legend", { position: "right" })
+    .setOption("width", 500)
+    .setOption("height", 350)
+    .build();
+
+  sheet.insertChart(chart);
+  console.log("Donut chart dibuat.");
+}
+
+function contoh15_chartAgregasi() {
+  // Pola umum dashboard: agregasi data ke area kosong, lalu chart dari sana
+  const sheet = _getSpreadsheet().getSheetByName("Karyawan");
+  const data  = sheet.getDataRange().getValues();
+  const headers = data.shift();
+  const cDivisi = headers.indexOf("Divisi");
+  const cGaji   = headers.indexOf("Gaji");
+
+  // Hitung total gaji per divisi
+  const perDivisi = {};
+  data.forEach((row) => {
+    const d = row[cDivisi];
+    perDivisi[d] = (perDivisi[d] || 0) + Number(row[cGaji] || 0);
+  });
+
+  // Tulis ke kolom E:F mulai baris 1
+  const rows = [["Divisi", "Total Gaji"]];
+  Object.entries(perDivisi).forEach(([d, g]) => rows.push([d, g]));
+  sheet.getRange(1, 5, rows.length, 2).setValues(rows);
+
+  // Hapus chart lama
+  sheet.getCharts().forEach((c) => sheet.removeChart(c));
+
+  // Bar chart dari agregasi
+  const chart = sheet.newChart()
+    .setChartType(Charts.ChartType.BAR)
+    .addRange(sheet.getRange(1, 5, rows.length, 2))
+    .setPosition(rows.length + 3, 5, 0, 0)
+    .setOption("title", "Total Gaji per Divisi")
+    .setOption("legend", { position: "none" })
+    .setOption("colors", ["#16a34a"])
+    .build();
+
+  sheet.insertChart(chart);
+  console.log("Agregasi + bar chart dibuat.");
+}
+
+function contoh16_updateChartPertama() {
+  const sheet = _getSpreadsheet().getSheetByName("Karyawan");
+  const charts = sheet.getCharts();
+
+  if (charts.length === 0) {
+    console.log("Belum ada chart. Jalankan contoh13_chartKolom dulu.");
+    return;
+  }
+
+  const updated = charts[0].modify()
+    .setOption("title", "Gaji per Karyawan (UPDATED " + new Date().toLocaleTimeString("id-ID") + ")")
+    .setOption("colors", ["#dc2626"])
+    .build();
+
+  sheet.updateChart(updated);
+  console.log("Chart pertama di-update (judul + warna).");
+}
+
+function contoh17_hapusSemuaChart() {
+  const sheet = _getSpreadsheet().getSheetByName("Karyawan");
+  const before = sheet.getCharts().length;
+  sheet.getCharts().forEach((c) => sheet.removeChart(c));
+  console.log(`${before} chart dihapus.`);
+}
+
+
+/* =========================================================================
+ * BAGIAN 9 — Mini-project: Notif pesanan selesai
  * (PRASYARAT: bikin tab "Pesanan" dengan kolom: Nomor Pesanan, Email Customer,
  *  Status, Notif Terkirim. Isi 3-5 baris sample dengan Status "Selesai" dan
  *  email aktif Anda untuk testing.)
