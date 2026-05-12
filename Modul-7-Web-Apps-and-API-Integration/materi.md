@@ -1,274 +1,469 @@
 # Modul 7 — Web Apps & API Integration
 
-Modul 5 membahas UI di dalam Sheet/Doc (sidebar/dialog). Modul 7 membuka pintu lebih lebar: **Web App** standalone yang punya URL publik sendiri, plus **integrasi dengan API eksternal** (cuaca, currency, webhook, dll).
+> **Versi ramah pemula.** Modul ini sengaja pelan. Kalau Anda baru pertama kali dengar kata "API" atau "webhook", baca dari atas — semua istilah dijelaskan sebelum dipakai.
 
-Outcome: kita bisa buat halaman dengan URL `script.google.com/macros/s/.../exec` yang melayani user lewat browser, dan bisa konsumsi/mengirim data dari/ke layanan luar.
+Di Modul 5 kita bikin form, tapi cuma bisa dibuka dari dalam Google Sheet. Di Modul 7 kita buat **halaman yang punya alamat URL sendiri** — bisa dibuka dari HP, dari laptop teman, dari mana saja. Dan kita juga belajar **menyambungkan script kita ke layanan luar** seperti cuaca, kurs mata uang, atau Slack.
 
 ---
 
-## 1. Apa itu Web App?
+## 0. Dua Konsep Utama (Pakai Analogi)
 
-Web App di Apps Script = **endpoint HTTP** yang hosted gratis di server Google. Kita tulis dua function: `doGet(e)` dan/atau `doPost(e)`. Setiap kali ada request HTTP ke URL Web App, function tersebut dipanggil.
+Sebelum masuk kode, dua kata yang akan terus muncul:
+
+### 🏠 Web App = Warung yang Punya Alamat
+
+Bayangkan Anda buka warung. Warung itu punya **alamat** (misal: Jl. Mawar 12). Siapapun yang tahu alamatnya bisa datang dan pesan.
+
+**Web App** = warung versi internet. Alamatnya bukan Jl. Mawar, tapi URL panjang seperti `https://script.google.com/macros/s/AKfy.../exec`. Siapapun yang buka URL itu di browser, akan "dilayani" oleh script kita.
+
+### 📞 API = Telepon Order ke Warung Lain
+
+Kadang warung kita butuh bahan dari warung sebelah. Kita angkat telepon, pesan, terima barang.
+
+**API** (Application Programming Interface) = cara script kita "menelepon" layanan lain di internet. Misal: telepon ke **wttr.in** untuk minta info cuaca, telepon ke **Slack** untuk titip pesan ke channel.
 
 ```mermaid
 flowchart LR
-    Browser["🌐 Browser/Client"] -->|GET / POST| URL["script.google.com/macros/s/.../exec"]:::url
-    URL --> GAS["Apps Script"]:::gas
-    GAS --> DoGet["doGet(e)"]:::fn
-    GAS --> DoPost["doPost(e)"]:::fn
-    DoGet --> Resp1["return HtmlOutput<br/>atau ContentService"]
-    DoPost --> Resp2["return ContentService<br/>(JSON)"]
+    User["👤 Pengguna<br/>(buka URL)"] -->|GET| WebApp["🏠 Web App kita<br/>(doGet)"]:::wa
+    WebApp -->|UrlFetchApp.fetch| API["📞 API luar<br/>(cuaca, slack, dll)"]:::api
+    API -->|jawaban JSON| WebApp
+    WebApp -->|HTML / JSON| User
 
-    classDef url fill:#fef3c7,stroke:#f59e0b
-    classDef gas fill:#dbeafe,stroke:#3b82f6,stroke-width:2px
-    classDef fn fill:#dcfce7,stroke:#16a34a
+    classDef wa fill:#dbeafe,stroke:#3b82f6,stroke-width:2px
+    classDef api fill:#fee2e2,stroke:#dc2626,stroke-width:2px
 ```
 
-### Pola umum:
-
-- **doGet** → return HTML page atau JSON (untuk visit dari browser).
-- **doPost** → menerima data dari client/integrasi, return JSON (untuk POST API).
+Itu inti modul ini. Sisanya cuma detail teknis.
 
 ---
 
-## 2. Web App Pertama — Halaman Sederhana
+## 1. Web App Pertama — "Hello World"
+
+Mari langsung praktek. Kita buat halaman paling sederhana yang bisa dibuka di browser.
+
+### 1.1 Tulis kode
+
+Di project Apps Script baru, buat function bernama **`doGet`** (nama ini wajib, jangan diganti):
 
 ```javascript
 function doGet(e) {
-  return HtmlService.createHtmlOutput(`
-    <h1>Halo dari Web App!</h1>
-    <p>Waktu server: ${new Date().toString()}</p>
-  `);
+  return HtmlService.createHtmlOutput("<h1>Halo dari Web App!</h1>");
 }
 ```
 
-Setelah save, deploy: **Deploy → New deployment → Type: Web app → Execute as: Me, Who has access: Anyone (atau Anyone with Google account, atau Only myself)**. Klik Deploy → autorisasi → dapatkan **URL Web App**.
+> **Kenapa namanya `doGet`?** Karena saat browser membuka URL, browser kirim permintaan jenis **GET** ("tolong kasih saya halaman"). Apps Script otomatis mencari function bernama `doGet` untuk menjawab.
 
-Buka URL di browser → halaman tampil.
+### 1.2 Deploy (Publish) — Pelan-pelan
 
-> Setiap kali kode berubah, **buat New version** dari Deploy menu, atau pakai **Test deployments** untuk preview cepat tanpa version baru.
+Tulisan kode saja belum cukup. Kita harus **deploy** supaya Google memberi kita URL.
+
+Langkah klik di editor Apps Script:
+
+1. Klik tombol biru **Deploy** (pojok kanan atas).
+2. Pilih **New deployment**.
+3. Klik ikon ⚙️ di sebelah "Select type", pilih **Web app**.
+4. Isi:
+   - **Description**: bebas, misal "Test pertama".
+   - **Execute as**: pilih **Me (email Anda)**. Artinya: script ini jalan pakai izin akun Anda.
+   - **Who has access**: pilih **Anyone**. Artinya: siapapun (bahkan tanpa login Google) bisa buka URL ini.
+5. Klik **Deploy**.
+6. Pertama kali, Google minta **autorisasi** — klik **Authorize access** → pilih akun Anda → ada warning "Google hasn't verified this app", klik **Advanced → Go to (nama project) (unsafe)** → **Allow**.
+
+> Warning "unsafe" itu **normal** untuk script milik sendiri. Bukan berarti berbahaya — Google cuma belum sempat me-review script personal.
+
+7. Selesai. Akan muncul **Web app URL**. Copy URL itu.
+
+### 1.3 Buka URL
+
+Tempel URL ke tab browser baru → tekan Enter. Akan tampil:
+
+> **Halo dari Web App!**
+
+Selamat 🎉 — itu Web App pertama Anda. URL itu bisa dibuka dari HP, dari laptop teman, dari mana saja.
+
+### 1.4 Update kode → harus re-deploy
+
+Ini bagian yang sering bikin pemula bingung:
+
+> **Setiap kali kode berubah, halaman di URL TIDAK otomatis update.**
+
+Anda harus:
+- **Cara cepat (untuk ngetes)**: Deploy → **Test deployments** → copy URL test. URL test selalu pakai versi kode terbaru.
+- **Cara resmi**: Deploy → **Manage deployments** → pilih deployment Anda → ikon ✏️ pensil → **Version: New version** → **Deploy**. URL tetap sama, tapi sekarang melayani kode terbaru.
+
+Aturan praktis: **selama development pakai Test URL, kalau sudah jadi baru bikin version resmi**.
 
 ---
 
-## 3. Membaca Query String — `doGet(e)`
+## 2. Bagaimana Apps Script Tahu Apa yang Dipanggil?
+
+Setiap kali ada yang buka URL Web App, Apps Script otomatis panggil salah satu dari dua function ini:
+
+| Function | Kapan dipanggil |
+|---|---|
+| **`doGet(e)`** | Saat URL dibuka di browser (GET request) |
+| **`doPost(e)`** | Saat ada yang mengirim data ke URL (POST request, biasanya dari script/webhook lain) |
+
+Parameter **`e`** itu objek berisi info request — siapa yang manggil, parameter apa yang dikirim, body request kalau POST, dll. Kita akan pakai `e` di bagian berikutnya.
+
+> Tidak harus bikin keduanya. Kalau cuma butuh tampilan, cukup `doGet`. Kalau cuma menerima webhook, cukup `doPost`.
+
+---
+
+## 3. Membaca Parameter dari URL
+
+URL bisa membawa "titipan" lewat **query string** — bagian setelah tanda `?`.
+
+Contoh: `https://.../exec?nama=Sari&umur=28`
+
+Bagian `nama=Sari&umur=28` itu titipan. Kita ambil pakai `e.parameter`:
 
 ```javascript
 function doGet(e) {
-  // URL: .../exec?nama=Sari&umur=28
-  const nama = e.parameter.nama || "Tamu";
+  const nama = e.parameter.nama || "Tamu";     // kalau kosong → "Tamu"
   const umur = e.parameter.umur || "—";
 
   return HtmlService.createHtmlOutput(`
-    <h1>Halo, ${nama}</h1>
-    <p>Umur: ${umur}</p>
+    <h1>Halo, ${nama}!</h1>
+    <p>Umur kamu: ${umur}</p>
   `);
 }
 ```
 
-`e.parameter` = object key-value dari query string. `e.parameters` (jamak) = nilai sebagai array kalau ada key dobel.
+Coba buka:
+- `.../exec` → "Halo, Tamu! Umur kamu: —"
+- `.../exec?nama=Budi` → "Halo, Budi! Umur kamu: —"
+- `.../exec?nama=Sari&umur=28` → "Halo, Sari! Umur kamu: 28"
+
+> Bagaimana cara mengirim parameter dari form? Lihat Section 6.
 
 ---
 
-## 4. Return JSON — `ContentService`
+## 4. Web App Bisa Balas JSON, Bukan Cuma HTML
 
-Kalau Web App dipakai sebagai **API endpoint**, return JSON:
+Kadang Web App tidak dipakai manusia, tapi dipakai **script/aplikasi lain** untuk minta data. Untuk itu, jawab pakai **JSON** (format data standar di internet) — bukan HTML.
 
 ```javascript
 function doGet(e) {
   const data = {
-    timestamp: new Date().toISOString(),
-    user:      Session.getActiveUser().getEmail(),
-    server:    "apps-script"
+    waktu:   new Date().toISOString(),
+    pesan:   "halo dari API",
+    angka:   42
   };
 
   return ContentService
-    .createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON);
+    .createTextOutput(JSON.stringify(data))    // ubah object → string JSON
+    .setMimeType(ContentService.MimeType.JSON); // beritahu browser: ini JSON
 }
 ```
 
-Test dengan `curl`:
-```bash
-curl https://script.google.com/macros/s/.../exec
+Buka URL → terlihat seperti:
+
+```json
+{"waktu":"2026-05-12T03:15:00.000Z","pesan":"halo dari API","angka":42}
 ```
+
+**Kapan pakai HTML, kapan pakai JSON?**
+
+| Tujuan | Pakai |
+|---|---|
+| Manusia buka di browser, lihat tampilan | `HtmlService` → HTML |
+| Aplikasi/script lain ambil data | `ContentService` → JSON |
 
 ---
 
-## 5. doPost — Menerima Data dari Luar
+## 5. Menelepon API Luar — `UrlFetchApp`
+
+Sekarang sisi sebaliknya: script kita yang **memanggil** layanan luar.
+
+Fungsi utamanya: **`UrlFetchApp.fetch(url)`**. Anggap saja seperti `fetch()` di browser, tapi versi Apps Script.
+
+### 5.1 Contoh paling sederhana — cek cuaca
+
+`wttr.in` adalah layanan cuaca gratis, tanpa daftar, tanpa API key. Cocok untuk latihan.
 
 ```javascript
-function doPost(e) {
-  // e.postData.contents = body request mentah (JSON string)
-  // e.postData.type      = content type (mis. "application/json")
+function cekCuaca() {
+  const url = "https://wttr.in/Jakarta?format=j1";
+  const respon = UrlFetchApp.fetch(url);          // 1. panggil
+  const data = JSON.parse(respon.getContentText()); // 2. ubah teks JSON → object
 
-  let payload;
-  try {
-    payload = JSON.parse(e.postData.contents);
-  } catch (err) {
-    return _json({ ok: false, error: "Invalid JSON" });
+  const suhu = data.current_condition[0].temp_C;
+  const kondisi = data.current_condition[0].weatherDesc[0].value;
+
+  console.log(`Jakarta: ${suhu}°C, ${kondisi}`);
+}
+```
+
+Run → lihat Executions log:
+
+```
+Jakarta: 30°C, Partly cloudy
+```
+
+### 5.2 Apa yang baru saja terjadi?
+
+```mermaid
+sequenceDiagram
+    participant S as Script kita
+    participant W as wttr.in
+    S->>W: GET /Jakarta?format=j1
+    W-->>S: { current_condition: [...], ... }
+    S->>S: JSON.parse → ambil data.current_condition[0].temp_C
+```
+
+Tiga langkah selalu sama setiap kali panggil API:
+1. **Kirim request** dengan `UrlFetchApp.fetch(url)`.
+2. **Ambil teks balasan** dengan `.getContentText()`.
+3. **Parse JSON** kalau jawabannya JSON: `JSON.parse(...)`.
+
+### 5.3 Kalau API perlu kirim data (POST)
+
+```javascript
+function kirimKeSlack(pesan) {
+  const opsi = {
+    method: "post",
+    contentType: "application/json",
+    payload: JSON.stringify({ text: pesan })
+  };
+  UrlFetchApp.fetch("https://hooks.slack.com/services/AAA/BBB/CCC", opsi);
+}
+```
+
+Bedanya dengan GET: kita kasih **opsi kedua** ke `fetch()` berisi method `"post"` dan `payload` (data yang dikirim).
+
+### 5.4 Kalau API perlu password/token
+
+Banyak API butuh "kunci" supaya tahu siapa yang manggil. Biasanya berupa token panjang di header **Authorization**.
+
+```javascript
+const opsi = {
+  method: "get",
+  headers: {
+    "Authorization": "Bearer xxxxxxxxxxxxxxxxxxxx"
   }
+};
+UrlFetchApp.fetch("https://api.contoh.com/data", opsi);
+```
 
-  // ... proses payload
-  const sheet = SpreadsheetApp.openById("...").getSheetByName("Logs");
-  sheet.appendRow([new Date(), JSON.stringify(payload)]);
+### 5.5 ⚠️ Jangan tulis token langsung di kode!
 
-  return _json({ ok: true, received: payload });
+Token = password. Kalau Anda copy-paste kode ke GitHub atau share ke orang, token ikut bocor.
+
+Cara aman: simpan di **Script Properties**.
+
+```javascript
+// Set sekali, dari editor (Run function ini sekali):
+function simpanToken() {
+  PropertiesService.getScriptProperties()
+    .setProperty("SLACK_TOKEN", "xoxb-rahasia-banget-jangan-bocor");
 }
 
-function _json(obj) {
-  return ContentService
-    .createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON);
+// Pakai di mana-mana:
+function panggilSlack() {
+  const token = PropertiesService.getScriptProperties().getProperty("SLACK_TOKEN");
+  // ... pakai token
 }
 ```
 
-Test:
-```bash
-curl -X POST -H "Content-Type: application/json" \
-  -d '{"event":"new_signup","email":"alice@example.com"}' \
-  https://script.google.com/macros/s/.../exec
-```
-
-> **Webhook receiver** — pola ini jadi pintu masuk untuk webhook dari Stripe, Slack, GitHub, Zapier, dll.
+Atau dari menu: **Project Settings ⚙️ → Script Properties → Add property**.
 
 ---
 
-## 6. Web App dengan UI Lengkap
+## 6. Web App + Form HTML (Kombinasi)
 
-Pakai HTML file terpisah (mirip Modul 5) tapi public-facing.
+Ini pola yang paling sering dipakai di dunia nyata: bikin form, user isi, data masuk ke Sheet.
+
+### 6.1 File HTML terpisah
+
+Di editor: ikon **+** sebelah "Files" → **HTML** → kasih nama `form` (tanpa `.html`).
+
+`form.html`:
+```html
+<!DOCTYPE html>
+<html>
+<body style="font-family: sans-serif; max-width: 400px; margin: 40px auto;">
+  <h2>Pendaftaran</h2>
+  <input id="nama"  placeholder="Nama"  style="width:100%; padding:8px; margin:4px 0;">
+  <input id="email" placeholder="Email" style="width:100%; padding:8px; margin:4px 0;">
+  <button onclick="kirim()" style="padding:8px 16px;">Daftar</button>
+  <p id="status"></p>
+
+  <script>
+    function kirim() {
+      const data = {
+        nama:  document.getElementById("nama").value,
+        email: document.getElementById("email").value
+      };
+      document.getElementById("status").innerText = "Mengirim...";
+
+      google.script.run
+        .withSuccessHandler(r => document.getElementById("status").innerText = "✅ " + r.pesan)
+        .withFailureHandler(e => document.getElementById("status").innerText = "❌ " + e.message)
+        .simpanPendaftar(data);
+    }
+  </script>
+</body>
+</html>
+```
+
+### 6.2 File Code.gs
 
 ```javascript
 function doGet(e) {
-  const tmpl = HtmlService.createTemplateFromFile("page");
-  tmpl.judul = "Pendaftaran Event";
-  tmpl.user  = Session.getActiveUser().getEmail();
-  return tmpl.evaluate()
+  return HtmlService.createHtmlOutputFromFile("form")
     .setTitle("Pendaftaran")
     .addMetaTag("viewport", "width=device-width, initial-scale=1");
 }
 
-function daftarEvent(formData) {
-  // dipanggil dari client lewat google.script.run
-  const sheet = SpreadsheetApp.openById("...").getSheetByName("Pendaftar");
-  sheet.appendRow([new Date(), formData.nama, formData.email, formData.kategori]);
-  return { ok: true };
+function simpanPendaftar(data) {
+  const sheet = SpreadsheetApp.openById("ID_SHEET_ANDA").getSheetByName("Pendaftar");
+  sheet.appendRow([new Date(), data.nama, data.email]);
+  return { pesan: "Pendaftaran berhasil!" };
 }
 ```
 
-`page.html` mirip pola di Modul 5, hanya ini di-host sebagai standalone URL. Sudah bisa diakses dari handphone/laptop manapun yang punya akses sesuai setting deploy.
-
----
-
-## 7. UrlFetchApp — Memanggil API Eksternal
-
-Apps Script bisa keluar memanggil HTTP API mana saja.
-
-### 7.1 GET sederhana
-
-```javascript
-function ambilCuaca(kota) {
-  // Gunakan API publik yang gratis & tidak butuh auth (contoh: wttr.in)
-  const url = `https://wttr.in/${encodeURIComponent(kota)}?format=j1`;
-  const respon = UrlFetchApp.fetch(url);
-  const data = JSON.parse(respon.getContentText());
-
-  const cuaca = data.current_condition[0];
-  console.log(`${kota}: ${cuaca.temp_C}°C, ${cuaca.weatherDesc[0].value}`);
-}
-```
-
-### 7.2 POST dengan body JSON
-
-```javascript
-function kirimKeWebhook(payload) {
-  const opsi = {
-    method:  "post",
-    contentType: "application/json",
-    payload: JSON.stringify(payload),
-    muteHttpExceptions: true   // jangan throw, kita handle sendiri
-  };
-
-  const respon = UrlFetchApp.fetch("https://hooks.slack.com/services/...", opsi);
-  console.log(`Status: ${respon.getResponseCode()}`);
-  console.log(`Body: ${respon.getContentText()}`);
-}
-```
-
-### 7.3 Authentication
-
-```javascript
-// Bearer token
-const opsi = {
-  method: "get",
-  headers: {
-    "Authorization": "Bearer " + token,
-    "Accept": "application/json"
-  }
-};
-
-// Basic auth
-const auth = Utilities.base64Encode(`${user}:${pass}`);
-const opsi2 = {
-  method: "get",
-  headers: { "Authorization": "Basic " + auth }
-};
-```
-
-### 7.4 Best practice: simpan secret di PropertiesService
-
-**Jangan hardcode API key di kode** — gunakan PropertiesService.
-
-```javascript
-function setApiKey() {
-  PropertiesService.getScriptProperties().setProperty("API_KEY", "rahasia123");
-  console.log("Key tersimpan.");
-}
-
-function panggilApi() {
-  const key = PropertiesService.getScriptProperties().getProperty("API_KEY");
-  // ... pakai key
-}
-```
-
-Atau set lewat UI: **Project Settings → Script Properties → Add property**.
-
----
-
-## 8. Integrasi Dua Arah — Pola Umum
+### 6.3 Cara kerjanya
 
 ```mermaid
 flowchart LR
-    External["Layanan Eksternal"]:::ext
-
-    External -->|webhook POST| WebApp["Web App<br/>doPost"]:::wa
-    WebApp --> Sheet["Sheet log"]:::s
-
-    Sheet -->|trigger / manual| GAS["Apps Script"]:::gas
-    GAS -->|UrlFetchApp.fetch| External2["API Eksternal"]:::ext
-
-    classDef ext fill:#fee2e2,stroke:#dc2626
-    classDef wa fill:#dbeafe,stroke:#3b82f6,stroke-width:2px
-    classDef s fill:#dcfce7,stroke:#16a34a
-    classDef gas fill:#fef3c7,stroke:#f59e0b
+    Browser["📱 Browser user"] -->|buka URL| DoGet["doGet"]
+    DoGet -->|kirim HTML| Browser
+    Browser -->|user klik Daftar<br/>google.script.run| Simpan["simpanPendaftar"]
+    Simpan -->|appendRow| Sheet["📊 Sheet"]
+    Simpan -->|return| Browser
 ```
 
-**Use case nyata**:
-- **Slack webhook** → notifikasi otomatis ke channel tim saat Form baru disubmit.
-- **Currency API** → update kurs di Sheet tiap jam.
-- **WhatsApp Business API / Telegram** → bot notifikasi.
-- **Stripe webhook** → catat pembayaran masuk ke Sheet.
+`google.script.run.namaFunction(arg)` adalah jembatan sihir Apps Script yang memanggil function server dari client. Mirip `fetch()` tapi otomatis aman dan tidak perlu URL.
 
 ---
 
-## 9. Mini-Project — Bot Telegram dengan Webhook
+## 7. Menerima Webhook — `doPost(e)`
 
-Skenario: User kirim pesan ke bot Telegram, bot membalas dengan info dari Sheet.
+**Webhook** = "API tapi terbalik": layanan luar yang **mengirim data ke kita** saat ada kejadian. Contoh: setiap kali ada pembelian di toko, Stripe kirim notifikasi ke URL kita.
 
-### Langkah:
+URL kita harus siap menerima. Caranya: bikin `doPost(e)`.
 
-**1) Bikin bot di Telegram** lewat @BotFather → dapat `BOT_TOKEN`.
+```javascript
+function doPost(e) {
+  let payload;
+  try {
+    payload = JSON.parse(e.postData.contents);   // body request dalam bentuk teks JSON
+  } catch (err) {
+    return _json({ ok: false, error: "Bukan JSON valid" });
+  }
 
-**2) Tulis Web App** Apps Script yang menerima webhook:
+  // Log ke Sheet supaya bisa dilihat
+  const sheet = SpreadsheetApp.openById("ID_SHEET").getSheetByName("Webhook-Log");
+  sheet.appendRow([new Date(), JSON.stringify(payload)]);
+
+  return _json({ ok: true });
+}
+
+function _json(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+```
+
+### Test pakai curl (dari Terminal)
+
+```bash
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"event":"signup","email":"alice@example.com"}' \
+  https://script.google.com/macros/s/.../exec
+```
+
+Buka Sheet → ada baris baru. 🎉
+
+> Belum punya layanan luar? Pakai **webhook.site** untuk simulasi, atau langsung test pakai curl seperti di atas.
+
+---
+
+## 8. Pengaturan Akses (Penting!)
+
+Saat deploy, ada dua dropdown yang menentukan **siapa yang bisa pakai** dan **dengan izin siapa script jalan**:
+
+### "Execute as"
+
+| Pilihan | Artinya |
+|---|---|
+| **Me** | Script jalan pakai akun Anda. Bisa akses Sheet/Drive Anda. **Wajib untuk webhook receiver.** |
+| **User accessing the web app** | Script jalan pakai akun pengunjung. Pengunjung wajib login Google. |
+
+### "Who has access"
+
+| Pilihan | Cocok untuk |
+|---|---|
+| **Only myself** | Eksperimen pribadi |
+| **Anyone with Google account** | Internal organisasi |
+| **Anyone** | Form public, webhook receiver |
+
+> Untuk **webhook**, kombinasi yang benar: **Execute as: Me** + **Who has access: Anyone**. Webhook luar tidak punya akun Google, jadi harus Anonymous.
+
+---
+
+## 9. Batas (Quota)
+
+Apps Script gratis tapi ada batas. Yang perlu diingat untuk modul ini:
+
+- `UrlFetchApp.fetch`: **20.000 panggilan/hari** (gratis), 100.000 (Workspace).
+- Eksekusi Web App: maksimal **6 menit per request**.
+- Maksimal **30 request bersamaan** per user.
+
+Untuk latihan tidak akan kena. Untuk production yang ramai, perlu hati-hati.
+
+---
+
+## 10. Tips & Pitfall Umum Pemula
+
+| Masalah | Solusi |
+|---|---|
+| "Kode sudah diubah tapi halaman lama" | Anda lupa re-deploy version baru, atau pakai URL `/exec` lama padahal yang ada perubahan adalah Test URL. |
+| "Authorization required" terus muncul | Run function sekali manual dari editor → autorisasi → baru deploy. |
+| Webhook dari luar dapat error 401 | Cek "Who has access" — harus **Anyone**, bukan Anyone with Google account. |
+| Data Bahasa Indonesia jadi "???" | Pastikan response pakai UTF-8 (default sudah). Untuk JSON, jangan modif mime type. |
+| `UrlFetchApp` throw error saat API balas 4xx/5xx | Tambah opsi `muteHttpExceptions: true` supaya bisa handle status code sendiri. |
+
+```javascript
+const opsi = { method: "get", muteHttpExceptions: true };
+const respon = UrlFetchApp.fetch(url, opsi);
+if (respon.getResponseCode() !== 200) {
+  console.log("API error:", respon.getContentText());
+  return;
+}
+```
+
+---
+
+## 11. Checklist Sebelum Lanjut
+
+Tandai yang sudah bisa dengan tenang (tidak perlu cepat):
+
+- [ ] Bisa bikin `doGet` yang balas HTML sederhana.
+- [ ] Tahu langkah deploy → autorisasi → dapat URL.
+- [ ] Paham bedanya Test deployment vs new version.
+- [ ] Bisa baca `e.parameter` dari query string.
+- [ ] Bisa balas JSON pakai `ContentService`.
+- [ ] Bisa panggil API luar pakai `UrlFetchApp.fetch` (GET).
+- [ ] Tahu kenapa token harus di `PropertiesService`, bukan di kode.
+- [ ] Bisa terima webhook pakai `doPost` dan log ke Sheet.
+
+Kalau ada yang belum jelas, ulangi bagiannya — **lebih baik pelan tapi paham, daripada cepat tapi bingung di Modul 8**.
+
+---
+
+## 12. Bonus — Mini Project: Bot Telegram
+
+> ⚠️ **Bagian opsional.** Skip dulu kalau Section 1–11 masih terasa berat. Boleh balik ke sini nanti.
+
+Skenario: User chat bot di Telegram → bot balas otomatis dari data Sheet kita.
+
+### Langkah singkat
+
+1. **Bikin bot**: chat `@BotFather` di Telegram → `/newbot` → kasih nama → dapat **token** (string panjang).
+2. **Simpan token** di Script Properties dengan key `BOT_TOKEN`.
+3. **Tulis Web App**:
 
 ```javascript
 const BOT_TOKEN = PropertiesService.getScriptProperties().getProperty("BOT_TOKEN");
@@ -280,24 +475,23 @@ function doPost(e) {
   const chatId = update.message.chat.id;
   const text   = (update.message.text || "").trim();
 
-  let reply;
-  if (text.startsWith("/start")) {
-    reply = "Halo! Ketik /menu untuk daftar perintah.";
-  } else if (text.startsWith("/menu")) {
-    reply = "Perintah:\n/menu - daftar perintah\n/info - info tim";
-  } else if (text.startsWith("/info")) {
-    reply = "Tim Otomasi Workspace v1.0";
+  let balasan;
+  if (text === "/start") {
+    balasan = "Halo! Ketik /menu untuk lihat perintah.";
+  } else if (text === "/menu") {
+    balasan = "/menu — daftar perintah\n/info — info bot";
+  } else if (text === "/info") {
+    balasan = "Bot demo Modul 7 ✨";
   } else {
-    reply = `Pesan diterima: "${text}"`;
+    balasan = `Saya menerima: "${text}"`;
   }
 
-  kirimPesan(chatId, reply);
+  kirimPesan(chatId, balasan);
   return _json({ ok: true });
 }
 
 function kirimPesan(chatId, text) {
-  const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-  UrlFetchApp.fetch(url, {
+  UrlFetchApp.fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
     method: "post",
     contentType: "application/json",
     payload: JSON.stringify({ chat_id: chatId, text: text })
@@ -310,73 +504,33 @@ function _json(obj) {
 }
 ```
 
-**3) Deploy sebagai Web App** → dapat URL.
+4. **Deploy** sebagai Web App (Anyone, Execute as Me) → copy URL.
+5. **Daftarkan webhook** ke Telegram (run sekali dari editor):
 
-**4) Daftarkan webhook ke Telegram**:
 ```javascript
-function setWebhook() {
-  const URL = "https://script.google.com/macros/s/.../exec";
+function pasangWebhook() {
+  const URL = "https://script.google.com/macros/s/.../exec"; // URL Web App Anda
   const r = UrlFetchApp.fetch(
     `https://api.telegram.org/bot${BOT_TOKEN}/setWebhook?url=${encodeURIComponent(URL)}`
   );
-  console.log(r.getContentText());
+  console.log(r.getContentText()); // harus berisi {"ok":true,...}
 }
 ```
 
-**5) Test**: kirim pesan ke bot di Telegram → bot balas otomatis.
+6. **Coba**: chat bot Anda di Telegram → bot membalas. 🎉
+
+Inilah inti integrasi 2-arah:
+- Telegram → script kita (webhook lewat `doPost`).
+- Script kita → Telegram (UrlFetchApp ke `sendMessage`).
 
 ---
 
-## 10. Keamanan & Quota
+## 13. Penutup
 
-### Setting akses Web App
+Yang sudah Anda kuasai:
+- Membuat halaman web sendiri yang bisa diakses dari URL public.
+- Menerima data dari form (manusia) maupun dari webhook (mesin).
+- Memanggil layanan luar (API) untuk ambil/kirim data.
+- Menyimpan rahasia dengan aman lewat PropertiesService.
 
-| Pilihan | Cocok untuk |
-|---|---|
-| **Only myself** | Eksperimen, internal admin |
-| **Anyone with Google account** | Internal Workspace organisasi |
-| **Anyone (including anonymous)** | Webhook receiver, public API/page |
-
-### Execute as
-
-| Pilihan | Yang jalan dengan permission siapa |
-|---|---|
-| **Me (user yang deploy)** | Permission deployer — script bisa akses Drive deployer |
-| **User accessing the web app** | Permission user yang buka — butuh login Google |
-
-> Untuk **webhook receiver** (anonim), wajib pilih **Execute as: Me + Anyone**. Tapi hati-hati: spam webhook bisa makan quota cepat.
-
-### Quota
-
-- `UrlFetchApp.fetch`: 20.000 / hari (gratis), 100.000 / hari (Workspace).
-- Web App execution: durasi max 6 menit per request.
-- Concurrent execution: limit ~30 request bersamaan per user.
-
----
-
-## 11. Best Practices
-
-1. **Simpan secret di PropertiesService**, bukan di kode (hindari masuk ke git).
-2. **Validasi origin webhook** — periksa header secret atau signature kalau penyedia mendukung (mis. `X-Hub-Signature` di GitHub).
-3. **Rate-limit di sisi script** dengan PropertiesService timestamp + LockService kalau webhook deras.
-4. **Logging request** ke Sheet untuk audit & debug, terutama untuk integrasi production.
-5. **Versi deployment** — set "Test deployment" untuk staging, "Production" untuk URL stabil.
-6. **`muteHttpExceptions: true`** saat fetch — supaya error HTTP tidak kill script, kita handle status code sendiri.
-7. **CORS**: Web App Apps Script tidak set header CORS otomatis. Kalau dipanggil dari browser frontend, harus dari domain yang sama atau via JSONP, atau pakai backend proxy.
-
----
-
-## 12. Penutup
-
-**Yang harus dikuasai sebelum lanjut**:
-
-- [ ] Bisa bikin doGet/doPost Web App dengan return HTML atau JSON.
-- [ ] Bisa baca query parameter dan request body.
-- [ ] Bisa deploy Web App dan mengelola versi.
-- [ ] Bisa panggil API eksternal pakai UrlFetchApp (GET/POST/auth).
-- [ ] Bisa simpan & ambil secret pakai PropertiesService.
-- [ ] Paham bedanya Execute as Me vs User, Anyone vs Anyone Logged In.
-- [ ] Bisa receive webhook dari layanan eksternal.
-- [ ] Bisa bangun integrasi 2-arah (terima + kirim).
-
-**Selanjutnya: Modul 8 — Integrating Multiple Google Services.**
+**Selanjutnya — Modul 8: Integrating Multiple Google Services** (menggabungkan Sheet + Gmail + Drive + Calendar dalam satu alur otomatis).
