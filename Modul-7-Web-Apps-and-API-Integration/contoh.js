@@ -1,5 +1,5 @@
 /**
- * Modul 7 — Contoh Lengkap (Versi Ramah Pemula)
+ * Modul 7 — Contoh Lengkap
  *
  * File ini disusun dari yang PALING SEDERHANA ke yang lebih advanced.
  * Setiap bagian bisa dijalankan terpisah, jadi tidak perlu paham semua sekaligus.

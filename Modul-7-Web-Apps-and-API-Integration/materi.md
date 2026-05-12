@@ -1,7 +1,5 @@
 # Modul 7 — Web Apps & API Integration
 
-> **Versi ramah pemula.** Modul ini sengaja pelan. Kalau Anda baru pertama kali dengar kata "API" atau "webhook", baca dari atas — semua istilah dijelaskan sebelum dipakai.
-
 Di Modul 5 kita bikin form, tapi cuma bisa dibuka dari dalam Google Sheet. Di Modul 7 kita buat **halaman yang punya alamat URL sendiri** — bisa dibuka dari HP, dari laptop teman, dari mana saja. Dan kita juga belajar **menyambungkan script kita ke layanan luar** seperti cuaca, kurs mata uang, atau Slack.
 
 ---
