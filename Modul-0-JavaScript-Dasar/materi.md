@@ -103,6 +103,25 @@ console.log(2 ** 8);   // 256
 
 **Logika**: `&&` (AND), `||` (OR), `!` (NOT)
 
+```javascript
+const umur = 20;
+const punyaKTP = true;
+
+console.log(umur >= 17 && punyaKTP);   // true   — kedua syarat harus true
+console.log(umur < 17 || punyaKTP);    // true   — cukup salah satu true
+console.log(!punyaKTP);                // false  — kebalikan
+
+// Pola "default value" pakai ||
+const nama = "" || "Tamu";             // "Tamu"  — string kosong dianggap false
+console.log(nama);
+
+// Short-circuit dengan &&
+const user = { aktif: true };
+user.aktif && console.log("User sedang online");   // tercetak hanya kalau aktif
+```
+
+> **Catatan**: di JavaScript, nilai yang dianggap "false" (falsy) adalah: `false`, `0`, `""`, `null`, `undefined`, `NaN`. Sisanya dianggap "true" (truthy).
+
 **Penggabungan string** dengan `+` atau template literal:
 
 ```javascript
