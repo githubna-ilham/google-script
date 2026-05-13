@@ -65,18 +65,7 @@ function cetakGenapV2(maks) {
 }
 
 
-/* ----- Soal 5: FizzBuzz ----- */
-function fizzBuzz(n) {
-  for (let i = 1; i <= n; i++) {
-    if (i % 15 === 0)      console.log("FizzBuzz");
-    else if (i % 3 === 0)  console.log("Fizz");
-    else if (i % 5 === 0)  console.log("Buzz");
-    else                   console.log(i);
-  }
-}
-
-
-/* ----- Soal 6: Statistik Array ----- */
+/* ----- Soal 5: Statistik Array ----- */
 function statistikNilai() {
   const nilai = [78, 55, 90, 42, 88, 63, 71, 95, 50, 80];
 
@@ -95,7 +84,7 @@ function statistikNilai() {
 }
 
 
-/* ----- Soal 7: Filter & Transform ----- */
+/* ----- Soal 6: Filter & Transform ----- */
 function analisaProduk() {
   const produk = [
     { nama: "Mouse",     harga: 150000,  stok: 12 },
@@ -117,7 +106,7 @@ function analisaProduk() {
 }
 
 
-/* ----- Soal 8: Object Manipulation ----- */
+/* ----- Soal 7: Object Manipulation ----- */
 function daftarKaryawanBaru() {
   const karyawan = [];
 
@@ -133,7 +122,7 @@ function daftarKaryawanBaru() {
 }
 
 
-/* ----- Soal 9: Pencarian dengan find ----- */
+/* ----- Soal 8: Pencarian dengan find ----- */
 function cariPeserta(id) {
   const peserta = [
     { id: "P001", nama: "Sari", lulus: true  },
@@ -146,13 +135,13 @@ function cariPeserta(id) {
   return hasil || "Peserta tidak ditemukan";
 }
 
-function ujiSoal9() {
+function ujiSoal8() {
   console.log(JSON.stringify(cariPeserta("P002")));
   console.log(cariPeserta("P999"));
 }
 
 
-/* ----- Soal 10: Penghitung Diskon ----- */
+/* ----- Soal 9: Penghitung Diskon ----- */
 function hitungBelanja() {
   const transaksi = [
     { item: "Buku",     qty: 3, harga: 50000 },
@@ -196,9 +185,8 @@ function jalankanSemuaSolusi() {
   const semua = [
     ujiSoal1, tabelSuhu, ujiSoal3,
     () => cetakGenap(10),
-    () => fizzBuzz(20),
     statistikNilai, analisaProduk, daftarKaryawanBaru,
-    ujiSoal9, hitungBelanja
+    ujiSoal8, hitungBelanja
   ];
   semua.forEach((fn, i) => {
     console.log(`\n========== Soal ${i + 1} ==========`);

@@ -7,7 +7,7 @@
 4. Verifikasi hasil dengan `console.log()` lalu cek di Execution log.
 5. Coba mandiri dulu **minimal 15 menit per soal** sebelum melihat `latihan-solusi.js`.
 
-**Target waktu**: 60–90 menit untuk 10 soal.
+**Target waktu**: 60–90 menit untuk 9 soal.
 
 ---
 
@@ -120,31 +120,7 @@ END FUNCTION
 
 ---
 
-## Soal 5 — FizzBuzz
-
-Buat function `fizzBuzz(n)` yang mencetak angka 1 sampai `n` dengan aturan:
-- Kelipatan 3 → cetak `"Fizz"`
-- Kelipatan 5 → cetak `"Buzz"`
-- Kelipatan 3 **dan** 5 → cetak `"FizzBuzz"`
-- Selain itu → cetak angkanya
-
-Uji dengan `fizzBuzz(20)`.
-
-**Pseudocode**:
-```
-FUNCTION fizzBuzz(n):
-    UNTUK i DARI 1 SAMPAI n:
-        JIKA i habis dibagi 15  cetak "FizzBuzz"      // cek 15 dulu!
-        SELAIN ITU JIKA i habis dibagi 3  cetak "Fizz"
-        SELAIN ITU JIKA i habis dibagi 5  cetak "Buzz"
-        SELAIN ITU                         cetak i
-END FUNCTION
-```
-> Tip: cek kelipatan 15 dulu (sebelum 3 dan 5), karena 15 = 3 × 5. Kalau cek 3 dulu, angka 15 akan dianggap "Fizz" saja.
-
----
-
-## Soal 6 — Statistik Array
+## Soal 5 — Statistik Array
 
 Diberikan data nilai ujian 10 mahasiswa:
 ```javascript
@@ -182,7 +158,7 @@ END FUNCTION
 
 ---
 
-## Soal 7 — Filter & Transform
+## Soal 6 — Filter & Transform
 
 Diberikan data produk:
 ```javascript
@@ -221,7 +197,7 @@ END FUNCTION
 
 ---
 
-## Soal 8 — Object Manipulation
+## Soal 7 — Object Manipulation
 
 Buat function `daftarKaryawanBaru()` yang:
 1. Membuat array kosong `karyawan`.
@@ -248,7 +224,7 @@ END FUNCTION
 
 ---
 
-## Soal 9 — Pencarian dengan `find`
+## Soal 8 — Pencarian dengan `find`
 
 Diberikan data peserta pelatihan:
 ```javascript
@@ -272,7 +248,7 @@ FUNCTION cariPeserta(id):
     KEMBALIKAN "Peserta tidak ditemukan"
 END FUNCTION
 
-FUNCTION ujiSoal9():
+FUNCTION ujiSoal8():
     cetak JSON.stringify(cariPeserta("P002"))
     cetak cariPeserta("P999")
 END FUNCTION
@@ -280,7 +256,7 @@ END FUNCTION
 
 ---
 
-## Soal 10 — Mini-Project: Penghitung Diskon
+## Soal 9 — Mini-Project: Penghitung Diskon
 
 Buat function `hitungBelanja()` yang:
 
@@ -339,7 +315,7 @@ END FUNCTION
 
 ## Checklist Sebelum Lanjut ke Modul Berikutnya
 
-- [ ] Saya berhasil menjalankan minimal 8 dari 10 soal di atas.
+- [ ] Saya berhasil menjalankan minimal 7 dari 9 soal di atas.
 - [ ] Saya paham beda `const`, `let`, `var`.
 - [ ] Saya bisa menulis function dengan parameter dan return.
 - [ ] Saya bisa iterasi array (for / forEach).
