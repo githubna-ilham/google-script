@@ -13,8 +13,8 @@ Materi **Google Apps Script for Business Automation** dirancang untuk mengajarka
 | **Inti** | Modul 3–4 | Otomasi Sheets dan Gmail |
 | **Antarmuka** | Modul 5 | UI Forms (sidebar, modal, CRUD) |
 | **Otomatisasi** | Modul 6 | Trigger time-driven & event-driven |
-| **Integrasi** | Modul 7–8 | Web Apps, API eksternal, multi-service workflow |
-| **Penutup** | Capstone | Project end-to-end mandiri |
+| **Integrasi** | Modul 7 | Web Apps, API eksternal, webhook |
+| **Project Akhir** | Modul 8 | Sistem Cuti Lengkap (multi-service end-to-end) |
 
 ### Apa yang Akan Anda Hasilkan?
 
@@ -143,18 +143,17 @@ Beberapa modul juga menyertakan file `.html` (template HTML untuk email atau UI 
 | 5 | [Building UI Forms for Data Input](./Modul-5-Building-UI-Forms/materi.md) | Sidebar, modal, CRUD, `google.script.run` |
 | 6 | [Workflow Automation](./Modul-6-Workflow-Automation/materi.md) | Trigger time-driven & event, PropertiesService, LockService |
 | 7 | [Web Apps & API Integration](./Modul-7-Web-Apps-and-API-Integration/materi.md) | doGet/doPost, UrlFetchApp, webhook, bot |
-| 8 | [Integrating Multiple Google Services](./Modul-8-Integrating-Multiple-Google-Services/materi.md) | Arsitektur multi-service, audit, idempotency |
-| ⭐ | [Capstone Project](./Capstone-Project/brief.md) | Project end-to-end mandiri (Cuti / Onboarding / Aset) |
+| 8 | [Project Akhir: Sistem Cuti](./Modul-8-Integrating-Multiple-Google-Services/materi.md) | Build end-to-end: Form + Sheet + Gmail + Calendar + Web App |
 
 ### Urutan Belajar yang Disarankan
 
 ```
 Modul 0 → Modul 1 → Modul 2 → Modul 3 → Modul 4
                                             ↓
-              Capstone ← Modul 8 ← Modul 7 ← Modul 6 ← Modul 5
+                       Modul 8 ← Modul 7 ← Modul 6 ← Modul 5
 ```
 
-Modul 0–4 berurutan, masing-masing membangun di atas sebelumnya. Modul 5–8 boleh dipilih sesuai kebutuhan, tapi **disarankan tetap berurutan** karena Modul 8 mengintegrasikan semua pattern dari modul-modul sebelumnya.
+Modul 0–4 berurutan, masing-masing membangun di atas sebelumnya. Modul 5–8 boleh dipilih sesuai kebutuhan, tapi **disarankan tetap berurutan** karena Modul 8 (Project Akhir Sistem Cuti) mengintegrasikan semua pattern dari modul-modul sebelumnya.
 
 ---
 

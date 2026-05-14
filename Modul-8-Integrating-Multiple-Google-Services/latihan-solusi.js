@@ -1,256 +1,319 @@
 /**
- * Modul 8 — Solusi Latihan
+ * Modul 8 — Solusi Latihan (Sistem Cuti)
  *
- * Untuk Soal 1 (modularisasi), bagi file ini menjadi beberapa .gs di
- * project Apps Script Anda — tapi function-nya tetap sama. Apps Script
- * tidak punya import; semua function di project sama bisa saling memanggil.
+ * Solusi ini melengkapi sistem cuti di contoh.js.
+ * Untuk Soal 1 dan 2, ada modifikasi langsung ke function existing —
+ * di sini ditulis dengan komentar yang menjelaskan bagian yang berubah.
  */
 
 
-/* ----- CONFIG ----- */
-function _props() { return PropertiesService.getScriptProperties(); }
-function CONFIG() {
-  return {
-    MASTER_SHEET_ID:        _props().getProperty("MASTER_SHEET_ID"),
-    ONBOARDING_FOLDER_ID:   _props().getProperty("ONBOARDING_FOLDER_ID"),
-    REPORTS_FOLDER_ID:      _props().getProperty("REPORTS_FOLDER_ID"),
-    TEMPLATE_DOC_ID:        _props().getProperty("TEMPLATE_DOC_ID"),
-    ADMIN_EMAIL:            _props().getProperty("ADMIN_EMAIL") || Session.getActiveUser().getEmail(),
-    AUDIT_SHEET_ID:         _props().getProperty("AUDIT_SHEET_ID"),
-    WEB_APP_URL:            _props().getProperty("WEB_APP_URL")
-  };
+/* ============================================================
+ * SOAL 1 — Validasi Tanggal
+ *
+ * Tambahkan blok validasi ini di pengajuanCutiHandler,
+ * SEBELUM "2. Cek kuota".
+ * ============================================================ */
+
+function _validasiTanggal(tglMulai, tglSelesai) {
+  const mulai = new Date(tglMulai);
+  const selesai = new Date(tglSelesai);
+
+  // Normalisasi: bandingkan tanggal saja (jam = 00:00:00)
+  const hariIni = new Date();
+  hariIni.setHours(0, 0, 0, 0);
+  mulai.setHours(0, 0, 0, 0);
+  selesai.setHours(0, 0, 0, 0);
+
+  if (mulai < hariIni)   return "Tanggal mulai tidak boleh di masa lalu.";
+  if (selesai < mulai)   return "Tanggal selesai harus setelah tanggal mulai.";
+
+  const jumlahHari = Math.round((selesai - mulai) / (24 * 60 * 60 * 1000)) + 1;
+  if (jumlahHari > 14)   return `Maksimal 14 hari per pengajuan (Anda ajukan ${jumlahHari} hari).`;
+
+  return null;   // valid
 }
 
+// Contoh integrasi ke pengajuanCutiHandler (potong dari versi asli):
+//
+//   ...
+//   data["Email"] = e.response.getRespondentEmail();
+//
+//   // ====== VALIDASI TANGGAL (Soal 1) ======
+//   const errMsg = _validasiTanggal(data["Tanggal Mulai"], data["Tanggal Selesai"]);
+//   if (errMsg) {
+//     MailApp.sendEmail({
+//       to: data["Email"],
+//       subject: "❌ Pengajuan ditolak — validasi gagal",
+//       body: `Halo ${data["Nama"]},\n\n${errMsg}\n\nSilakan ajukan ulang.`
+//     });
+//     _audit("tolak-validasi", { email: data["Email"], errMsg });
+//     cache.put(`cuti:${responseId}`, "1", 21600);
+//     return;
+//   }
+//   // =========================================
+//
+//   const sisa  = cekKuota(data["Email"]);
+//   ...
 
-/* ----- AUDIT ----- */
-function audit_log(handler, status, payload) {
-  const cfg = CONFIG();
-  if (!cfg.AUDIT_SHEET_ID) return;
-  try {
-    const sheet = SpreadsheetApp.openById(cfg.AUDIT_SHEET_ID).getSheetByName("Audit");
-    sheet.appendRow([
-      new Date(),
-      Session.getActiveUser().getEmail(),
-      handler + " - " + status,
-      JSON.stringify(payload).substring(0, 5000)
-    ]);
-  } catch (err) {
-    console.log("Audit gagal: " + err.message);
+
+/* ============================================================
+ * SOAL 2 — Halaman Status Pribadi
+ *
+ * Tambahkan cabang ini di doGet, SEBELUM cek action.
+ * ============================================================ */
+
+function _halamanStatus(email) {
+  if (!email) {
+    return _halamanPesan(false, "Parameter ?email=... wajib.");
   }
+
+  const sheet = _sheet("Pengajuan-Cuti");
+  const data = sheet.getDataRange().getValues();
+  const h = data[0];
+  const cEmail = h.indexOf("Email");
+  const cMulai = h.indexOf("Tanggal Mulai");
+  const cSel   = h.indexOf("Tanggal Selesai");
+  const cJenis = h.indexOf("Jenis Cuti");
+  const cStat  = h.indexOf("Status");
+
+  const riwayat = data.slice(1)
+    .filter((r) => String(r[cEmail]).toLowerCase() === email.toLowerCase());
+
+  const baris = riwayat.map((r) => `
+    <tr>
+      <td style="padding:6px 12px;border:1px solid #d1d5db;">${_fmtTanggal(r[cMulai])}</td>
+      <td style="padding:6px 12px;border:1px solid #d1d5db;">${_fmtTanggal(r[cSel])}</td>
+      <td style="padding:6px 12px;border:1px solid #d1d5db;">${r[cJenis]}</td>
+      <td style="padding:6px 12px;border:1px solid #d1d5db;">${_badgeStatus(r[cStat])}</td>
+    </tr>
+  `).join("");
+
+  const sisaKuota = cekKuota(email);
+
+  return HtmlService.createHtmlOutput(`
+    <html><body style="font-family:Arial;padding:30px;max-width:700px;margin:auto;">
+      <h2>Riwayat Cuti — ${email}</h2>
+      <p>Sisa kuota Anda: <b>${sisaKuota} hari</b></p>
+      <table style="border-collapse:collapse;width:100%;">
+        <thead>
+          <tr style="background:#f3f4f6;">
+            <th style="padding:6px 12px;border:1px solid #d1d5db;text-align:left;">Mulai</th>
+            <th style="padding:6px 12px;border:1px solid #d1d5db;text-align:left;">Selesai</th>
+            <th style="padding:6px 12px;border:1px solid #d1d5db;text-align:left;">Jenis</th>
+            <th style="padding:6px 12px;border:1px solid #d1d5db;text-align:left;">Status</th>
+          </tr>
+        </thead>
+        <tbody>${baris || '<tr><td colspan="4" style="padding:20px;text-align:center;color:#6b7280;">Belum ada pengajuan</td></tr>'}</tbody>
+      </table>
+    </body></html>
+  `);
 }
 
-
-/* ----- Soal 2: Idempotent wrapper ----- */
-function onboardingIdempotent(responseId, data) {
-  const cache = CacheService.getScriptCache();
-  if (cache.get(`onboard:${responseId}`)) {
-    console.log(`Skip: ${responseId} sudah diproses.`);
-    return { skipped: true };
-  }
-
-  const lock = LockService.getScriptLock();
-  if (!lock.tryLock(10000)) {
-    throw new Error("Tidak dapat lock.");
-  }
-
-  try {
-    if (cache.get(`onboard:${responseId}`)) return { skipped: true };
-
-    onboardingHandler(data);
-
-    cache.put(`onboard:${responseId}`, "1", 21600);
-    return { processed: true };
-  } finally {
-    lock.releaseLock();
-  }
+function _fmtTanggal(v) {
+  return v instanceof Date
+    ? Utilities.formatDate(v, Session.getScriptTimeZone(), "yyyy-MM-dd")
+    : String(v);
 }
 
+function _badgeStatus(status) {
+  const warna = { Pending: "#f59e0b", Approved: "#16a34a", Rejected: "#dc2626" }[status] || "#6b7280";
+  return `<span style="color:white;background:${warna};padding:2px 8px;border-radius:4px;font-size:12px;">${status}</span>`;
+}
 
-/* ----- Soal 3: Daily Pipeline Report ----- */
-function pasangPipelineReportTrigger() {
+// Cara integrasi di doGet:
+//
+//   function doGet(e) {
+//     if (e.parameter.page === "status") {
+//       return _halamanStatus(e.parameter.email);
+//     }
+//     // ... logic approve/reject yang sudah ada
+//   }
+
+
+/* ============================================================
+ * SOAL 3 — Reminder Cuti Besok
+ * ============================================================ */
+
+function reminderCutiBesok() {
+  const sheet = _sheet("Pengajuan-Cuti");
+  const data = sheet.getDataRange().getValues();
+  const h = data[0];
+  const cNama  = h.indexOf("Nama");
+  const cEmail = h.indexOf("Email");
+  const cMulai = h.indexOf("Tanggal Mulai");
+  const cSel   = h.indexOf("Tanggal Selesai");
+  const cStat  = h.indexOf("Status");
+
+  const tz = Session.getScriptTimeZone();
+  const besok = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const besokStr = Utilities.formatDate(besok, tz, "yyyy-MM-dd");
+
+  const adminEmail = _props().getProperty("ADMIN_EMAIL");
+  let count = 0;
+
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][cStat] !== "Approved") continue;
+
+    const mulaiStr = _fmtTanggal(data[i][cMulai]);
+    if (mulaiStr !== besokStr) continue;
+
+    const nama  = data[i][cNama];
+    const email = data[i][cEmail];
+    const sel   = _fmtTanggal(data[i][cSel]);
+
+    MailApp.sendEmail({
+      to: email,
+      cc: adminEmail,
+      subject: `[Reminder] Cuti dimulai besok — ${nama}`,
+      htmlBody: `<p>Halo ${nama},</p>` +
+                `<p>Reminder: cuti Anda dimulai <b>besok</b> dan berakhir <b>${sel}</b>.</p>` +
+                `<p>Pastikan handover pekerjaan sudah selesai. Selamat istirahat! 🌴</p>`
+    });
+    count++;
+  }
+
+  console.log(`Reminder dikirim ke ${count} karyawan.`);
+  _audit("reminder-cuti", { tanggal: besokStr, count });
+}
+
+function pasangReminderTrigger() {
   ScriptApp.getProjectTriggers()
-    .filter((t) => t.getHandlerFunction() === "dailyPipelineReport")
+    .filter((t) => t.getHandlerFunction() === "reminderCutiBesok")
     .forEach((t) => ScriptApp.deleteTrigger(t));
 
-  ScriptApp.newTrigger("dailyPipelineReport")
-    .timeBased().atHour(7).everyDays(1).create();
+  ScriptApp.newTrigger("reminderCutiBesok")
+    .timeBased().atHour(17).everyDays(1).create();
 
-  console.log("Trigger pipeline report dipasang.");
-}
-
-function dailyPipelineReport() {
-  const ctx = { stage: "init" };
-  const cfg = CONFIG();
-
-  try {
-    // 1. Baca pipeline
-    ctx.stage = "read";
-    const ss = SpreadsheetApp.openById(cfg.MASTER_SHEET_ID);
-    const sheet = ss.getSheetByName("Pipeline");
-    const data = sheet.getDataRange().getValues();
-    const headers = data.shift();
-
-    const cStat   = headers.indexOf("Status");
-    const cId     = headers.indexOf("Deal ID");
-    const cCust   = headers.indexOf("Customer");
-    const cNilai  = headers.indexOf("Nilai");
-    const cUpdate = headers.indexOf("Tanggal Update");
-
-    const open = data.filter((r) => r[cStat] === "Open");
-    const totalNilai = open.reduce((sum, r) => sum + (Number(r[cNilai]) || 0), 0);
-
-    // 2. Doc
-    ctx.stage = "doc";
-    const tanggal = Utilities.formatDate(
-      new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd"
-    );
-    const bulanLabel = Utilities.formatDate(
-      new Date(), Session.getScriptTimeZone(), "MMM-yyyy"
-    );
-
-    const doc = DocumentApp.create(`Pipeline Report — ${tanggal}`);
-    const body = doc.getBody();
-    body.appendParagraph(`Pipeline Report — ${tanggal}`)
-        .setHeading(DocumentApp.ParagraphHeading.HEADING1);
-    body.appendParagraph(`Total Open Deal: ${open.length}`);
-    body.appendParagraph(`Total Pipeline Value: Rp ${totalNilai.toLocaleString("id-ID")}`);
-    body.appendParagraph("");
-
-    // Tabel
-    const tableData = [["Deal ID", "Customer", "Nilai", "Last Update"]];
-    open.forEach((r) => {
-      const upd = r[cUpdate] instanceof Date
-        ? r[cUpdate].toLocaleDateString("id-ID")
-        : String(r[cUpdate]);
-      tableData.push([
-        String(r[cId]),
-        String(r[cCust]),
-        "Rp " + Number(r[cNilai]).toLocaleString("id-ID"),
-        upd
-      ]);
-    });
-    body.appendTable(tableData);
-    doc.saveAndClose();
-
-    // 3. Pindah ke folder bulan
-    ctx.stage = "drive-move";
-    const reportsFolder = DriveApp.getFolderById(cfg.REPORTS_FOLDER_ID);
-    const cariBulan = reportsFolder.getFoldersByName(bulanLabel);
-    const folder = cariBulan.hasNext() ? cariBulan.next() : reportsFolder.createFolder(bulanLabel);
-    DriveApp.getFileById(doc.getId()).moveTo(folder);
-
-    // 4. Export PDF
-    ctx.stage = "pdf";
-    const pdfBlob = DriveApp.getFileById(doc.getId()).getAs("application/pdf");
-    const pdfFile = folder.createFile(pdfBlob).setName(doc.getName() + ".pdf");
-
-    // 5. Email
-    ctx.stage = "email";
-    MailApp.sendEmail({
-      to: cfg.ADMIN_EMAIL,
-      subject: `Pipeline Report — ${tanggal}`,
-      body: `Total Open Deal: ${open.length}\nTotal Value: Rp ${totalNilai.toLocaleString("id-ID")}\n\nPDF terlampir.`,
-      attachments: [pdfFile.getBlob()]
-    });
-
-    audit_log("dailyPipelineReport", "success", {
-      ...ctx, openCount: open.length, totalNilai, pdfUrl: pdfFile.getUrl()
-    });
-  } catch (err) {
-    audit_log("dailyPipelineReport", "failed", { ...ctx, error: err.message });
-    throw err;
-  }
+  console.log("Trigger reminder jam 17:00 terpasang ✓");
 }
 
 
-/* ----- Soal 4: Cache Layer ----- */
-function getKursCached() {
-  const cache = CacheService.getScriptCache();
-  const cached = cache.get("kurs-idr");
-  if (cached) {
-    console.log("Cache hit");
-    return JSON.parse(cached);
+/* ============================================================
+ * SOAL 4 — Reset Kuota Tahunan
+ * ============================================================ */
+
+function resetKuotaTahunan(paksa) {
+  // getMonth() → 0 = Januari
+  if (new Date().getMonth() !== 0 && !paksa) {
+    throw new Error(
+      "Reset kuota hanya boleh dijalankan di bulan Januari. " +
+      "Untuk override, panggil resetKuotaTahunan(true)."
+    );
   }
 
-  console.log("Cache miss, fetching...");
-  const r = UrlFetchApp.fetch("https://api.exchangerate-api.com/v4/latest/USD", {
-    muteHttpExceptions: true
+  const sheet = _sheet("Kuota-Cuti");
+  const data = sheet.getDataRange().getValues();
+  const cSisa = data[0].indexOf("Sisa");
+
+  const updates = data.slice(1).map(() => [12]);   // semua di-set ke 12
+  if (updates.length > 0) {
+    sheet.getRange(2, cSisa + 1, updates.length, 1).setValues(updates);
+  }
+
+  _audit("reset-kuota-tahunan", { jumlahKaryawan: updates.length });
+  console.log(`${updates.length} karyawan di-reset jadi 12 hari.`);
+}
+
+
+/* ============================================================
+ * SOAL 5 — Dashboard HR
+ * ============================================================ */
+
+function _halamanDashboard() {
+  // Auth sederhana
+  const HR_EMAILS = (_props().getProperty("HR_EMAILS") || "")
+    .split(",").map((s) => s.trim().toLowerCase());
+  const userEmail = (Session.getActiveUser().getEmail() || "").toLowerCase();
+
+  if (HR_EMAILS.length > 0 && !HR_EMAILS.includes(userEmail)) {
+    return _halamanPesan(false, "Akses ditolak. Halaman ini hanya untuk HR.");
+  }
+
+  const sheet = _sheet("Pengajuan-Cuti");
+  const data = sheet.getDataRange().getValues();
+  const h = data[0];
+  const cTime  = h.indexOf("Timestamp");
+  const cNama  = h.indexOf("Nama");
+  const cJenis = h.indexOf("Jenis Cuti");
+  const cStat  = h.indexOf("Status");
+  const cId    = h.indexOf("ID");
+  const cMulai = h.indexOf("Tanggal Mulai");
+  const cSel   = h.indexOf("Tanggal Selesai");
+
+  const tz = Session.getScriptTimeZone();
+  const bulanIni = Utilities.formatDate(new Date(), tz, "yyyy-MM");
+
+  // 1. Total bulan ini
+  const bulanIniRows = data.slice(1).filter((r) => {
+    const t = r[cTime];
+    if (!(t instanceof Date)) return false;
+    return Utilities.formatDate(t, tz, "yyyy-MM") === bulanIni;
   });
-  if (r.getResponseCode() !== 200) return null;
 
-  const data = JSON.parse(r.getContentText());
-  cache.put("kurs-idr", JSON.stringify(data), 3600);
-  return data;
+  // 2. Breakdown status
+  const statusCount = { Pending: 0, Approved: 0, Rejected: 0 };
+  data.slice(1).forEach((r) => {
+    if (statusCount[r[cStat]] !== undefined) statusCount[r[cStat]]++;
+  });
+
+  // 3. Top 3 jenis cuti
+  const jenisCount = {};
+  data.slice(1).forEach((r) => {
+    const j = r[cJenis];
+    jenisCount[j] = (jenisCount[j] || 0) + 1;
+  });
+  const top3 = Object.entries(jenisCount)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3);
+
+  // 4. Pending list
+  const webAppUrl = _props().getProperty("WEB_APP_URL");
+  const pendingRows = data.slice(1)
+    .filter((r) => r[cStat] === "Pending")
+    .map((r) => `
+      <tr>
+        <td style="padding:6px 12px;border:1px solid #d1d5db;">${r[cNama]}</td>
+        <td style="padding:6px 12px;border:1px solid #d1d5db;">${r[cJenis]}</td>
+        <td style="padding:6px 12px;border:1px solid #d1d5db;">${_fmtTanggal(r[cMulai])} → ${_fmtTanggal(r[cSel])}</td>
+        <td style="padding:6px 12px;border:1px solid #d1d5db;">
+          <a href="${webAppUrl}?action=approve&id=${r[cId]}" style="color:#16a34a;">✓ Approve</a>
+          &nbsp;|&nbsp;
+          <a href="${webAppUrl}?action=reject&id=${r[cId]}"  style="color:#dc2626;">✗ Reject</a>
+        </td>
+      </tr>
+    `).join("");
+
+  return HtmlService.createHtmlOutput(`
+    <html><body style="font-family:Arial;padding:30px;max-width:900px;margin:auto;">
+      <h2>📊 Dashboard HR — Cuti</h2>
+
+      <h3>Bulan ini</h3>
+      <p>Total pengajuan: <b>${bulanIniRows.length}</b></p>
+
+      <h3>Breakdown status (semua waktu)</h3>
+      <ul>
+        <li>Pending : ${statusCount.Pending}</li>
+        <li>Approved: ${statusCount.Approved}</li>
+        <li>Rejected: ${statusCount.Rejected}</li>
+      </ul>
+
+      <h3>Top 3 jenis cuti</h3>
+      <ol>${top3.map(([j, n]) => `<li>${j} — ${n}×</li>`).join("")}</ol>
+
+      <h3>Pending Approval</h3>
+      <table style="border-collapse:collapse;width:100%;">
+        <thead><tr style="background:#f3f4f6;">
+          <th style="padding:6px 12px;border:1px solid #d1d5db;text-align:left;">Nama</th>
+          <th style="padding:6px 12px;border:1px solid #d1d5db;text-align:left;">Jenis</th>
+          <th style="padding:6px 12px;border:1px solid #d1d5db;text-align:left;">Periode</th>
+          <th style="padding:6px 12px;border:1px solid #d1d5db;text-align:left;">Aksi</th>
+        </tr></thead>
+        <tbody>${pendingRows || '<tr><td colspan="4" style="padding:20px;text-align:center;color:#6b7280;">Tidak ada pending</td></tr>'}</tbody>
+      </table>
+    </body></html>
+  `);
 }
 
-function tampilKurs() {
-  for (let i = 0; i < 3; i++) {
-    const data = getKursCached();
-    console.log(`Run #${i + 1}: USD/IDR = ${data ? data.rates.IDR : "n/a"}`);
-  }
-}
-
-
-/* ----- Soal 5: Sistem Cuti — sudah lengkap di contoh.js ----- */
-// Lihat contoh.js untuk: pengajuanCutiHandler, doGet, cuti_processApproval, dll.
-// Soal 5 adalah test integrasi end-to-end manual.
-
-
-/* ----- Soal 6: Diagnose ----- */
-function diagnose() {
-  const cfg = CONFIG();
-  const out = [];
-  let anomaly = false;
-
-  // 1. Audit history untuk dailyPipelineReport
-  if (cfg.AUDIT_SHEET_ID) {
-    const sheet = SpreadsheetApp.openById(cfg.AUDIT_SHEET_ID).getSheetByName("Audit");
-    const data = sheet.getDataRange().getValues();
-    const last10 = data.slice(-11, -1)   // skip header
-      .filter((r) => String(r[2]).startsWith("dailyPipelineReport"));
-
-    out.push(`=== Audit history (${last10.length} entry) ===`);
-    last10.forEach((r) => {
-      out.push(`${r[0].toLocaleString("id-ID")} - ${r[2]} - ${String(r[3]).substring(0, 200)}`);
-    });
-
-    if (last10.some((r) => String(r[2]).includes("failed"))) {
-      anomaly = true;
-    }
-  }
-
-  // 2. Trigger
-  const triggers = ScriptApp.getProjectTriggers()
-    .filter((t) => t.getHandlerFunction() === "dailyPipelineReport");
-  out.push(`\n=== Trigger ===`);
-  out.push(`Trigger pipeline report aktif: ${triggers.length > 0 ? "YA" : "TIDAK"}`);
-  if (triggers.length === 0) anomaly = true;
-
-  // 3. Folder
-  out.push(`\n=== Folder Reports ===`);
-  try {
-    const folder = DriveApp.getFolderById(cfg.REPORTS_FOLDER_ID);
-    out.push(`Folder accessible: YA (${folder.getName()})`);
-  } catch (err) {
-    out.push(`Folder error: ${err.message}`);
-    anomaly = true;
-  }
-
-  // 4. Quota email
-  const sisa = MailApp.getRemainingDailyQuota();
-  out.push(`\n=== Quota ===`);
-  out.push(`Sisa email hari ini: ${sisa}`);
-  if (sisa < 10) anomaly = true;
-
-  const report = out.join("\n");
-  console.log(report);
-
-  if (anomaly) {
-    MailApp.sendEmail({
-      to: cfg.ADMIN_EMAIL,
-      subject: "[Diagnose] Anomali terdeteksi",
-      body: report
-    });
-    console.log("Anomali → email ke admin.");
-  }
-}
+// Integrasi di doGet:
+//
+//   if (e.parameter.page === "dashboard") return _halamanDashboard();

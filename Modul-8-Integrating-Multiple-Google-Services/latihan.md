@@ -1,126 +1,83 @@
-# Latihan Modul 8 — Integrating Multiple Google Services
+# Latihan Modul 8 — Sistem Cuti
 
-Latihan ini lebih sedikit jumlahnya tapi lebih besar scope-nya — fokus ke design integrasi end-to-end.
+Materi sudah berbentuk langkah praktek. **Latihan ini adalah pengembangan dari sistem cuti yang sudah Anda bangun di `materi.md`.**
 
-**Persiapan**:
-1. Buat Google Sheet `Latihan-M8` dengan tab:
-   - **Karyawan-Master**: `Nama | Email | Divisi | Tanggal Mulai | Tanggal Daftar`
-   - **Pipeline**: `Deal ID | Customer | Nilai | Status | Tanggal Update` (isi 5–10 baris dummy, mix Open/Closed)
-   - **Kuota-Cuti**: `Email | Sisa`
-   - **Pengajuan-Cuti**: `ID | Timestamp | Nama | Email | Jenis Cuti | Tanggal Mulai | Tanggal Selesai | Alasan | Status`
-   - **Audit**: `Timestamp | User | Status | Payload`
-2. Buat folder Drive `Onboarding` (parent) — copy ID.
-3. Buat Google Doc "Welcome Letter Template" dengan placeholder `{{nama}}`, `{{divisi}}`, `{{tanggalMulai}}` — copy ID.
-4. Set Script Properties: `MASTER_SHEET_ID`, `ONBOARDING_FOLDER_ID`, `TEMPLATE_DOC_ID`, `ADMIN_EMAIL`, `AUDIT_SHEET_ID`.
+Pastikan sistem dasar (Langkah 0–6 di materi.md) sudah jalan sebelum mengerjakan latihan ini.
 
 ---
 
-## Soal 1 — Modularisasi
+## Soal 1 — Validasi Tanggal
 
-Ambil function `onboardingHandler` dari `contoh.js`. Refactor jadi minimal **3 file `.gs`**:
-- `Main.gs` — orchestrator + trigger
-- `Sheets.gs` — semua helper Sheets
-- `Drive.gs` + `Docs.gs` + `Email.gs` + `Calendar.gs` (boleh disatukan kalau singkat)
-- `Utils.gs` — audit_log, format helper
+Karyawan kadang iseng mengajukan cuti untuk tanggal yang sudah lewat, atau tanggal selesai sebelum tanggal mulai. Tambah validasi di `pengajuanCutiHandler`:
 
-Tambah satu file `Config.gs` yang ekspor `function CONFIG() { ... }` mengembalikan object dari Script Properties.
+1. **Tanggal Mulai harus ≥ hari ini.** Kalau tidak → tolak dengan email yang menjelaskan alasan.
+2. **Tanggal Selesai harus ≥ Tanggal Mulai.** Kalau tidak → tolak.
+3. **Maksimal 14 hari per pengajuan.** Kalau lebih → tolak.
 
-Test: jalankan `ujiOnboarding()` dengan dummy data Anda sendiri. Verifikasi:
-- Baris masuk ke Karyawan-Master.
-- Folder Onboarding/<nama> terbentuk.
-- Welcome Doc tergenerate.
-- Email diterima.
-- Event Calendar muncul.
-- Audit log mencatat.
+Audit semua kasus tolak ini dengan aksi `tolak-validasi`.
+
+> 💡 **Hint**: bandingkan tanggal pakai `new Date(...) < new Date()`. Untuk membandingkan "tanggal saja" tanpa jam, normalisasi dulu dengan `.setHours(0,0,0,0)`.
 
 ---
 
-## Soal 2 — Idempotent Layer
+## Soal 2 — Halaman Status Pribadi
 
-Tambahkan wrapper `onboardingIdempotent(responseId, data)` yang:
-1. Cek `CacheService.getScriptCache().get('onboard:' + responseId)` — kalau ada → skip.
-2. Lock dengan `LockService` 10 detik.
-3. Double-check cache.
-4. Panggil `onboardingHandler(data)`.
-5. Set cache `onboard:<responseId> = "1"` dengan TTL 6 jam.
+Tambah rute Web App `?page=status&email=...` yang menampilkan tabel HTML berisi riwayat pengajuan cuti karyawan tersebut dari tab `Pengajuan-Cuti`.
 
-Test: panggil 2× berturut dengan responseId yang sama → eksekusi kedua harus skip.
+Kolom yang ditampilkan: Tanggal Mulai | Tanggal Selesai | Jenis | Status.
 
----
+Tambahkan baris terakhir di halaman: **"Sisa kuota Anda: X hari"**.
 
-## Soal 3 — Daily Pipeline Report
-
-Buat workflow lengkap `dailyPipelineReport()` yang dijalankan tiap pagi 07:00:
-
-1. Baca tab `Pipeline`, filter `Status = Open`.
-2. Bikin Google Doc "Pipeline Report — <tanggal>" berisi:
-   - Heading dengan tanggal.
-   - Total Open Deal (count).
-   - Total Pipeline Value (sum Nilai).
-   - Tabel: Deal ID | Customer | Nilai | Status | Last Update.
-3. Pindah Doc ke folder Drive `Reports/<bulan-tahun>` (bikin folder kalau belum ada).
-4. Export Doc ke PDF, simpan di folder yang sama.
-5. Kirim email ke `ADMIN_EMAIL` dengan PDF sebagai attachment.
-6. Audit log.
-
-Pasang sebagai trigger time-driven `atHour(7).everyDays(1)`.
+> 💡 **Hint**: di `doGet`, tambah cabang `if (e.parameter.page === "status")` sebelum logika approve/reject yang sekarang.
 
 ---
 
-## Soal 4 — Cache Layer
+## Soal 3 — Reminder Cuti Besok
 
-Buat function `getKursCached()` yang:
-1. Baca `CacheService` key `kurs-idr` — kalau ada, return.
-2. Kalau tidak: panggil API kurs publik, simpan ke cache (TTL 1 jam), return.
+Buat function `reminderCutiBesok()` yang dijalankan **setiap hari pukul 17:00** dan:
 
-Lalu buat function `tampilKurs()` yang panggil `getKursCached()` 3× berturut. Dari log, harus terlihat: 1× cache miss, 2× cache hit.
+1. Baca tab `Pengajuan-Cuti`, filter Status = `Approved`.
+2. Cari yang `Tanggal Mulai` = besok.
+3. Untuk tiap pengajuan tersebut → kirim email reminder ke karyawan dan CC ke manager dengan subject `[Reminder] Cuti dimulai besok — <nama>`.
 
----
+Pasang trigger time-driven via function `pasangReminderTrigger()`.
 
-## Soal 5 — Mini-Project: Sistem Cuti Lengkap
-
-Implementasikan sistem cuti seperti di materi.md §9:
-
-1. Buat **Google Form** dengan field: Nama, Email, Jenis Cuti, Tanggal Mulai, Tanggal Selesai, Alasan.
-2. Pasang trigger `onFormSubmit` ke `pengajuanCutiHandler` (sudah ada di contoh.js).
-3. Implementasi `doGet` dengan routing:
-   - `?action=approve&id=<cuti-id>` → approve flow (update status, bikin event, kurangi kuota, email karyawan).
-   - `?action=reject&id=<cuti-id>` → reject flow (update status, email karyawan).
-4. Test end-to-end:
-   - Submit form
-   - Cek email manager masuk dengan link approve/reject
-   - Klik approve → cek tab Pengajuan-Cuti, kuota di-update, event Calendar muncul, email ke karyawan masuk
-   - Submit lagi dengan kuota tidak cukup → harus email tolak otomatis
-
-Bonus:
-- Tambah validasi tanggal mulai harus > hari ini.
-- Tambah batas hari cuti per pengajuan (mis. max 14 hari).
-- Tambah notif Slack ke channel HR (kalau Modul 7 sudah set).
+> 💡 **Hint**: "besok" = `new Date(Date.now() + 24*60*60*1000)`. Bandingkan dengan format `yyyy-MM-dd` pakai `Utilities.formatDate`.
 
 ---
 
-## Soal 6 — Pickle: Diagnosa Workflow Bermasalah
+## Soal 4 — Reset Kuota Tahunan
 
-Skenario: workflow `dailyPipelineReport` (Soal 3) di production tiba-tiba gagal, tapi tidak ada error eksplisit di log. Email tidak masuk, PDF tidak terbuat.
+Buat function `resetKuotaTahunan()` yang men-set kolom `Sisa` di tab `Kuota-Cuti` jadi `12` untuk semua karyawan.
 
-Buat function `diagnose()` yang:
-1. Baca tab `Audit`, ambil 10 entry terakhir untuk handler `dailyPipelineReport`.
-2. Tampilkan ringkasan: stage terakhir, error message (kalau ada).
-3. Cek apakah trigger masih terpasang (`ScriptApp.getProjectTriggers()`).
-4. Cek apakah Drive folder `Reports/<bulan-tahun>` masih bisa diakses.
-5. Cek kuota email (`MailApp.getRemainingDailyQuota()`).
-6. Print ringkasan ke log dan kirim ke `ADMIN_EMAIL` kalau ada anomali.
+Tambahkan **konfirmasi sebelum eksekusi**: function harus throw error kalau dijalankan di luar bulan Januari, kecuali ada parameter `paksa = true`.
+
+> 💡 **Hint**: `new Date().getMonth()` → 0 untuk Januari, 11 untuk Desember.
 
 ---
 
-## Checklist Selesai Modul 8
+## Soal 5 — Bonus: Dashboard HR
 
-- [ ] Project saya termodularisasi dengan baik (Main + helper per service).
-- [ ] Saya pakai PropertiesService untuk config & secret.
-- [ ] Saya pakai CacheService untuk data sementara.
-- [ ] Saya pakai LockService untuk operasi yang bisa overlap.
-- [ ] Audit log saya lengkap dengan stage tracking.
-- [ ] Saya bisa men-design end-to-end workflow seperti onboarding atau cuti.
-- [ ] Saya tahu cara mendiagnosa workflow yang bermasalah.
+Buat rute `?page=dashboard` yang menampilkan halaman HTML berisi:
 
-**Selanjutnya: Capstone Project (folder `Capstone-Project`).**
+1. **Total pengajuan bulan ini** (count baris dengan Timestamp di bulan ini).
+2. **Breakdown status**: Pending / Approved / Rejected (count masing-masing).
+3. **Top 3 jenis cuti** yang paling sering diajukan.
+4. **Tabel pending approval** — semua pengajuan status Pending, dengan tombol approve/reject inline.
+
+Bonus level 2: tambah autentikasi sederhana — cuma email yang ada di Script Property `HR_EMAILS` (comma-separated) yang boleh akses. Cek `Session.getActiveUser().getEmail()`.
+
+> 💡 Untuk Web App yang butuh login, deploy ulang dengan **Who has access: Anyone with Google account**.
+
+---
+
+## Checklist Selesai
+
+- [ ] Sistem dasar dari materi.md sudah berfungsi end-to-end.
+- [ ] Validasi tanggal sudah aktif (Soal 1).
+- [ ] Karyawan bisa cek riwayat sendiri (Soal 2).
+- [ ] Reminder otomatis sudah jalan (Soal 3).
+- [ ] Function reset tahunan sudah ada (Soal 4).
+- [ ] (Bonus) Dashboard HR berfungsi.
+
+Setelah semua tercentang, Anda sudah bisa menerapkan pola yang sama untuk **sistem internal apa pun** — pengadaan barang, request lembur, klaim reimburse, dll. 🎉

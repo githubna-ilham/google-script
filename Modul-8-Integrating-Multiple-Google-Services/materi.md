@@ -1,286 +1,484 @@
-# Modul 8 — Integrating Multiple Google Services
+# Modul 8 — Project Akhir: Sistem Cuti Lengkap
 
-Modul terakhir ini menyatukan semua yang sudah dipelajari. Kalau modul-modul sebelumnya menggali satu service per kali, modul ini menampilkan **arsitektur akhir** ketika 4-5 service bekerja sama dalam satu workflow nyata.
+Modul ini bukan materi teori. Anda akan langsung **membangun satu sistem nyata** yang menggabungkan semua yang sudah dipelajari: Sheet, Form, Gmail, Calendar, Web App, dan Trigger.
 
-Outcome: peserta bisa men-design dan implementasi otomatisasi end-to-end yang reliable dan maintainable.
+Setelah selesai, Anda punya sistem cuti karyawan yang sungguhan bisa dipakai di kantor.
 
 ---
 
-## 1. Arsitektur Multi-Service
+## Apa yang Akan Kita Bangun
+
+**Skenario**:
+1. Karyawan isi **Google Form** pengajuan cuti.
+2. Sistem otomatis **cek sisa kuota** karyawan di Sheet.
+   - Kalau kuota tidak cukup → email tolak otomatis.
+   - Kalau cukup → catat di Sheet sebagai "Pending" + email ke manager dengan tombol Approve/Reject.
+3. Manager klik tombol di email → buka **Web App** → status di-update.
+4. Kalau Approved: bikin event Calendar, kurangi kuota, email ke karyawan.
+5. Kalau Rejected: email ke karyawan dengan alasan.
 
 ```mermaid
 flowchart TD
-    Trigger["⏰ Trigger / Webhook /<br/>Form Submit"]:::tr --> Orchestrator["🎯 Orchestrator<br/>(function utama)"]:::orch
+    F["📝 Karyawan isi Form"] --> T["onFormSubmit trigger"]
+    T --> V{"Kuota cukup?"}
+    V -->|Tidak| E1["📧 Email tolak<br/>(otomatis)"]
+    V -->|Ya| S["📊 Append Sheet<br/>Status: Pending"]
+    S --> M["📧 Email manager<br/>+ tombol Approve/Reject"]
 
-    Orchestrator --> Sheets["📊 Sheets<br/>baca data, tulis log"]:::svc
-    Orchestrator --> Drive["📁 Drive<br/>buat folder, simpan PDF"]:::svc
-    Orchestrator --> Docs["📄 Docs<br/>generate dokumen<br/>dari template"]:::svc
-    Orchestrator --> Calendar["📅 Calendar<br/>buat event"]:::svc
-    Orchestrator --> Gmail["📧 Gmail<br/>kirim notif"]:::svc
-    Orchestrator --> Fetch["🌐 UrlFetchApp<br/>integrasi luar"]:::svc
+    M -.-> Manager["👨‍💼 Manager klik tombol"]
+    Manager --> W["🌐 Web App<br/>doGet?action=...&id=..."]:::wa
+    W --> U["Update Status<br/>di Sheet"]
+    U --> Cek{"Approved?"}
+    Cek -->|Ya| C["📅 Event Calendar +<br/>kurangi kuota"]
+    Cek -->|Tidak| EE["📧 Email karyawan<br/>(rejected)"]
+    C --> EA["📧 Email karyawan<br/>(approved)"]
 
-    Orchestrator --> Props["💾 PropertiesService<br/>state & secret"]:::store
-    Orchestrator --> Cache["⚡ CacheService<br/>cache 6 jam"]:::store
-
-    classDef tr fill:#fef3c7,stroke:#f59e0b,stroke-width:2px
-    classDef orch fill:#dbeafe,stroke:#3b82f6,stroke-width:3px
-    classDef svc fill:#dcfce7,stroke:#16a34a
-    classDef store fill:#fce7f3,stroke:#ec4899
+    classDef wa fill:#dbeafe,stroke:#3b82f6,stroke-width:2px
 ```
-
-**Prinsip arsitektur**:
-- Satu orchestrator = satu function tinggi yang men-koordinasi semua service.
-- Tiap service-call dibungkus helper kecil (single-responsibility).
-- State persisten di PropertiesService.
-- Cache pakai CacheService untuk yang sering dipanggil tapi jarang berubah.
 
 ---
 
-## 2. Pola Modular — File Organization
+## Langkah 0 — Persiapan
 
-Project Apps Script bisa berisi banyak file `.gs`. Organisasi yang baik membuat code maintainable.
+### 0.1 Buat Spreadsheet
 
-```
-project Apps Script/
-├── Main.gs                ← orchestrator + trigger
-├── Sheets.gs              ← helper Sheets (read/write)
-├── Drive.gs               ← helper Drive (folder, copy, search)
-├── Docs.gs                ← helper Docs (template, replace)
-├── Email.gs               ← helper Gmail/MailApp
-├── External.gs            ← UrlFetchApp wrappers
-├── Utils.gs               ← logging, format, helper
-└── (HTML files)
-```
+Buat Spreadsheet baru bernama **`Sistem-Cuti`** dengan 3 tab:
 
-**Aturan**:
-- Tiap file fokus ke satu service/concern.
-- Function di file mana pun bisa saling memanggil tanpa import.
-- Konstanta global di top file `Main.gs` atau `Config.gs`.
+**Tab `Kuota-Cuti`** (data master kuota tiap karyawan):
 
-> Apps Script tidak punya module system. Hindari nama function generic seperti `init()` yang bisa konflik. Pakai prefix: `sheets_read`, `drive_findOrCreate`, `email_sendKonfirmasi`.
+| Email | Nama | Sisa |
+|---|---|---|
+| `karyawan1@perusahaan.com` | Sari Wulandari | 12 |
+| `karyawan2@perusahaan.com` | Budi Setiawan | 12 |
+
+Isi minimal 2 baris dengan email karyawan yang nanti akan submit form.
+
+**Tab `Pengajuan-Cuti`** (riwayat semua pengajuan):
+
+| ID | Timestamp | Nama | Email | Jenis Cuti | Tanggal Mulai | Tanggal Selesai | Alasan | Status |
+|---|---|---|---|---|---|---|---|---|
+
+Cukup baris header, isi nanti otomatis.
+
+**Tab `Audit`** (log untuk debugging):
+
+| Timestamp | User | Aksi | Detail |
+|---|---|---|---|
+
+### 0.2 Buat Google Form
+
+Buat Form baru bernama **`Pengajuan Cuti`** dengan field:
+
+| Field | Type | Required |
+|---|---|---|
+| Email | Email (Settings → Collect email addresses) | ✓ |
+| Nama | Short answer | ✓ |
+| Jenis Cuti | Multiple choice: Tahunan / Sakit / Khusus | ✓ |
+| Tanggal Mulai | Date | ✓ |
+| Tanggal Selesai | Date | ✓ |
+| Alasan | Paragraph | — |
+
+### 0.3 Buat Apps Script Project
+
+Di Spreadsheet `Sistem-Cuti`: **Extensions → Apps Script**. Project baru terbuka (sudah bound ke Sheet).
+
+### 0.4 Set Script Properties
+
+**Project Settings ⚙️ → Script Properties → Add property**:
+
+| Key | Value |
+|---|---|
+| `SHEET_ID` | ID Spreadsheet `Sistem-Cuti` (dari URL antara `/d/` dan `/edit`) |
+| `FORM_ID` | ID Form `Pengajuan Cuti` (dari URL antara `/d/` dan `/edit`) |
+| `ADMIN_EMAIL` | Email manager yang akan dapat notif approval |
+
+> `WEB_APP_URL` belum diisi sekarang — kita akan deploy dulu, baru update di Langkah 4.
 
 ---
 
-## 3. CacheService — Cache Cepat
+## Langkah 1 — Helper Dasar
 
-Lebih ringan dari PropertiesService untuk data sementara. Max 6 jam, max 100KB per key.
+Di file `Code.gs`, tulis helper yang akan dipakai berulang.
 
 ```javascript
-function ambilDataKurs() {
-  const cache = CacheService.getScriptCache();
-  const cached = cache.get("kurs");
-  if (cached) {
-    console.log("Cache hit!");
-    return JSON.parse(cached);
-  }
+// ===== Config & Helper =====
+function _props() {
+  return PropertiesService.getScriptProperties();
+}
 
-  console.log("Cache miss, fetching...");
-  const r = UrlFetchApp.fetch("https://api.exchangerate-api.com/v4/latest/USD");
-  const data = JSON.parse(r.getContentText());
+function _sheet(nama) {
+  const SHEET_ID = _props().getProperty("SHEET_ID");
+  return SpreadsheetApp.openById(SHEET_ID).getSheetByName(nama);
+}
 
-  cache.put("kurs", JSON.stringify(data), 3600);   // simpan 1 jam (max 21600)
-  return data;
+function _audit(aksi, detail) {
+  _sheet("Audit").appendRow([
+    new Date(),
+    Session.getActiveUser().getEmail() || "system",
+    aksi,
+    JSON.stringify(detail).substring(0, 1000)
+  ]);
+}
+
+// Hitung jumlah hari cuti (inclusive)
+function _hitungHari(mulai, selesai) {
+  const m = new Date(mulai);
+  const s = new Date(selesai);
+  return Math.round((s - m) / (24 * 60 * 60 * 1000)) + 1;
 }
 ```
 
-**Kapan pakai apa**:
-- **CacheService**: data yang boleh stale beberapa menit/jam (kurs, weather, lookup tables).
-- **PropertiesService**: state penting yang harus persist (API key, lastSyncTime, config).
+> **Test cepat**: ketik di console editor `_audit("test", { hello: "world" })` lalu **Run**. Cek tab `Audit` — harus muncul baris baru.
 
 ---
 
-## 4. Error Handling & Logging
+## Langkah 2 — Function Cek Kuota
 
-Multi-service workflow rentan terhadap kegagalan parsial (mis. Sheet sukses, tapi email gagal). Pola yang baik:
-
-### 4.1 Catch granular, log detail
+Function ini cari email karyawan di tab `Kuota-Cuti` dan return sisa kuota-nya.
 
 ```javascript
-function cutiHandler(data) {
-  const ctx = { stage: "init", data };
+function cekKuota(email) {
+  const data = _sheet("Kuota-Cuti").getDataRange().getValues();
+  const header = data[0];
+  const cEmail = header.indexOf("Email");
+  const cSisa  = header.indexOf("Sisa");
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][cEmail]).toLowerCase() === email.toLowerCase()) {
+      return Number(data[i][cSisa]) || 0;
+    }
+  }
+  return 0;   // email tidak terdaftar → 0
+}
+```
+
+**Test**: ganti `email_anda@...` dengan email yang ada di tab Kuota-Cuti, lalu run:
+
+```javascript
+function ujiCekKuota() {
+  console.log(cekKuota("karyawan1@perusahaan.com"));   // harus print 12
+  console.log(cekKuota("tidak.ada@example.com"));      // harus print 0
+}
+```
+
+---
+
+## Langkah 3 — Handler Form Submit
+
+Inilah inti workflow: function yang dipanggil otomatis setiap kali ada submit form.
+
+```javascript
+function pengajuanCutiHandler(e) {
+  // 1. Ambil jawaban form jadi object {Nama: "...", Email: "...", ...}
+  const data = {};
+  e.response.getItemResponses().forEach((item) => {
+    data[item.getItem().getTitle()] = item.getResponse();
+  });
+  // Form Settings → Collect email addresses → akses lewat:
+  data["Email"] = e.response.getRespondentEmail();
 
   try {
-    ctx.stage = "validasi-kuota";
-    const sisa = cuti_cekKuota(data.email);
-    if (sisa < data.jumlahHari) throw new Error("Kuota tidak cukup");
+    // 2. Hitung kebutuhan vs sisa kuota
+    const sisa = cekKuota(data["Email"]);
+    const butuh = _hitungHari(data["Tanggal Mulai"], data["Tanggal Selesai"]);
 
-    ctx.stage = "sheet";
-    const cutiId = cuti_appendPengajuan(data);
+    if (sisa < butuh) {
+      MailApp.sendEmail({
+        to: data["Email"],
+        subject: "❌ Pengajuan cuti ditolak — kuota tidak cukup",
+        body: `Halo ${data["Nama"]},\n\nMaaf, sisa kuota Anda ${sisa} hari, ` +
+              `sedangkan pengajuan ${butuh} hari.\n\nSilakan koordinasi dengan HR.`
+      });
+      _audit("tolak-kuota", { email: data["Email"], sisa, butuh });
+      return;
+    }
 
-    ctx.stage = "docs";
-    const docUrl = docs_generateFormCuti(data);
+    // 3. Simpan pengajuan ke Sheet dengan ID unik
+    const cutiId = "CUT-" + Date.now();
+    _sheet("Pengajuan-Cuti").appendRow([
+      cutiId,
+      new Date(),
+      data["Nama"],
+      data["Email"],
+      data["Jenis Cuti"],
+      data["Tanggal Mulai"],
+      data["Tanggal Selesai"],
+      data["Alasan"] || "",
+      "Pending"
+    ]);
 
-    ctx.stage = "email-manager";
-    email_notifManagerApproval(data, cutiId);
+    // 4. Email manager dengan tombol approve/reject
+    kirimEmailApproval(cutiId, data, butuh);
 
-    audit_log("success", { ...ctx, cutiId, docUrl });
+    _audit("submit", { cutiId, email: data["Email"], butuh });
   } catch (err) {
-    audit_log("failed", { ...ctx, error: err.message, stack: err.stack });
+    _audit("submit-error", { error: err.message, data });
     throw err;
   }
 }
-```
 
-`ctx.stage` membantu debug — kalau gagal di stage `"docs"`, langsung tahu di mana, dan audit log juga menyimpan stage terakhir sebelum gagal.
+function kirimEmailApproval(cutiId, data, jumlahHari) {
+  const adminEmail = _props().getProperty("ADMIN_EMAIL");
+  const webAppUrl  = _props().getProperty("WEB_APP_URL") || "(belum di-set)";
 
-### 4.2 Sheet sebagai Audit Log
+  const linkOK    = `${webAppUrl}?action=approve&id=${cutiId}`;
+  const linkBatal = `${webAppUrl}?action=reject&id=${cutiId}`;
 
-```javascript
-function audit_log(status, payload) {
-  const SHEET_ID = PropertiesService.getScriptProperties().getProperty("AUDIT_SHEET_ID");
-  if (!SHEET_ID) return;
-
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName("Audit");
-  sheet.appendRow([
-    new Date(),
-    Session.getActiveUser().getEmail(),
-    status,
-    JSON.stringify(payload).substring(0, 5000)
-  ]);
-}
-```
-
-### 4.3 Notif ke admin saat error
-
-```javascript
-function audit_logFailure(payload) {
-  const ADMIN = PropertiesService.getScriptProperties().getProperty("ADMIN_EMAIL");
   MailApp.sendEmail({
-    to: ADMIN,
-    subject: "[Workflow Error] " + payload.stage,
-    body: JSON.stringify(payload, null, 2)
+    to: adminEmail,
+    subject: `[Approval Cuti] ${data["Nama"]} — ${jumlahHari} hari`,
+    htmlBody: `
+      <p><b>${data["Nama"]}</b> mengajukan cuti.</p>
+      <ul>
+        <li>Jenis: ${data["Jenis Cuti"]}</li>
+        <li>Tanggal: ${data["Tanggal Mulai"]} — ${data["Tanggal Selesai"]} (${jumlahHari} hari)</li>
+        <li>Alasan: ${data["Alasan"] || "(tidak diisi)"}</li>
+      </ul>
+      <p>
+        <a href="${linkOK}"    style="background:#16a34a;color:white;padding:8px 16px;text-decoration:none;border-radius:4px;">✓ Approve</a>
+        &nbsp;
+        <a href="${linkBatal}" style="background:#dc2626;color:white;padding:8px 16px;text-decoration:none;border-radius:4px;">✗ Reject</a>
+      </p>
+    `
   });
 }
 ```
 
----
-
-## 5. Idempotency di Workflow Multi-Step
-
-Trigger bisa dipanggil dua kali (network glitch, retry, manual run). Workflow harus aman dijalankan ulang.
-
-### Strategi:
-
-1. **External marker**: kolom Sheet `Status: Processed` — skip kalau sudah.
-2. **Idempotency key**: pakai key unik (`Form Response ID`, `Email Message ID`) → cek di Sheet/Properties sebelum proses.
-3. **Atomic check-then-do**: di Sheet, gunakan `LockService` saat baca → cek → tulis status → release.
+### Pasang trigger Form Submit
 
 ```javascript
-function cutiHandlerIdempotent(e) {
-  const responseId = e.response.getId();   // unik per submission
+function pasangTrigger() {
+  const FORM_ID = _props().getProperty("FORM_ID");
 
+  // Hapus trigger lama dulu (biar tidak dobel kalau dijalankan ulang)
+  ScriptApp.getProjectTriggers()
+    .filter((t) => t.getHandlerFunction() === "pengajuanCutiHandler")
+    .forEach((t) => ScriptApp.deleteTrigger(t));
+
+  ScriptApp.newTrigger("pengajuanCutiHandler")
+    .forForm(FormApp.openById(FORM_ID))
+    .onFormSubmit()
+    .create();
+
+  console.log("Trigger terpasang ✓");
+}
+```
+
+**Run `pasangTrigger` sekali** → autorisasi → selesai.
+
+---
+
+## Langkah 4 — Web App untuk Approve / Reject
+
+Saat manager klik tombol di email, browser membuka URL Web App kita. Function `doGet` yang melayani.
+
+```javascript
+function doGet(e) {
+  const action = e.parameter.action;   // "approve" atau "reject"
+  const id     = e.parameter.id;       // cutiId
+
+  if (!action || !id) {
+    return _halamanPesan(false, "Parameter tidak lengkap.");
+  }
+
+  const hasil = prosesApproval(id, action);
+  return _halamanPesan(hasil.ok, hasil.pesan);
+}
+
+function prosesApproval(id, action) {
+  if (action !== "approve" && action !== "reject") {
+    return { ok: false, pesan: "Aksi tidak valid." };
+  }
+
+  const sheet = _sheet("Pengajuan-Cuti");
+  const data = sheet.getDataRange().getValues();
+  const h = data[0];
+  const cId     = h.indexOf("ID");
+  const cStatus = h.indexOf("Status");
+
+  // Cari baris dengan ID matching
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][cId] !== id) continue;
+
+    // Cegah double-proses (kalau manager refresh)
+    if (data[i][cStatus] !== "Pending") {
+      return { ok: false, pesan: `Pengajuan sudah ${data[i][cStatus]}.` };
+    }
+
+    const status = action === "approve" ? "Approved" : "Rejected";
+    sheet.getRange(i + 1, cStatus + 1).setValue(status);
+
+    const nama  = data[i][h.indexOf("Nama")];
+    const email = data[i][h.indexOf("Email")];
+    const mulai = data[i][h.indexOf("Tanggal Mulai")];
+    const sel   = data[i][h.indexOf("Tanggal Selesai")];
+
+    if (action === "approve") {
+      buatEventCalendar(nama, email, mulai, sel);
+      kurangiKuota(email, _hitungHari(mulai, sel));
+
+      MailApp.sendEmail({
+        to: email,
+        subject: "✅ Cuti Anda di-Approved",
+        htmlBody: `<p>Halo ${nama},</p>` +
+                  `<p>Pengajuan cuti Anda <b>${mulai} — ${sel}</b> telah disetujui. Event Calendar sudah dibuat.</p>`
+      });
+    } else {
+      MailApp.sendEmail({
+        to: email,
+        subject: "❌ Cuti Anda di-Reject",
+        htmlBody: `<p>Halo ${nama},</p>` +
+                  `<p>Pengajuan cuti Anda <b>${mulai} — ${sel}</b> ditolak. Silakan hubungi manager.</p>`
+      });
+    }
+
+    _audit("approval-" + action, { id, nama });
+    return { ok: true, pesan: `Pengajuan ${nama} berhasil di-${status}.` };
+  }
+
+  return { ok: false, pesan: "ID tidak ditemukan." };
+}
+
+function buatEventCalendar(nama, emailKaryawan, tglMulai, tglSelesai) {
+  const cal = CalendarApp.getDefaultCalendar();
+  const mulai = new Date(tglMulai);
+  // Calendar all-day event butuh tanggal selesai = hari setelah hari terakhir cuti
+  const selesai = new Date(new Date(tglSelesai).getTime() + 24 * 60 * 60 * 1000);
+
+  cal.createAllDayEvent(`Cuti — ${nama}`, mulai, selesai, {
+    description: `Cuti karyawan ${nama}`,
+    guests: emailKaryawan,
+    sendInvites: true
+  });
+}
+
+function kurangiKuota(email, jumlah) {
+  const sheet = _sheet("Kuota-Cuti");
+  const data = sheet.getDataRange().getValues();
+  const cEmail = data[0].indexOf("Email");
+  const cSisa  = data[0].indexOf("Sisa");
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][cEmail]).toLowerCase() === email.toLowerCase()) {
+      sheet.getRange(i + 1, cSisa + 1).setValue((data[i][cSisa] || 0) - jumlah);
+      return;
+    }
+  }
+}
+
+// Halaman HTML sederhana untuk feedback ke manager
+function _halamanPesan(ok, pesan) {
+  const warna = ok ? "#16a34a" : "#dc2626";
+  const icon  = ok ? "✅" : "❌";
+  return HtmlService.createHtmlOutput(`
+    <html><body style="font-family:Arial;padding:40px;max-width:500px;margin:auto;">
+      <div style="border-left:4px solid ${warna};padding-left:16px;">
+        <h2>${icon} ${ok ? "Berhasil" : "Gagal"}</h2>
+        <p>${pesan}</p>
+      </div>
+    </body></html>
+  `);
+}
+```
+
+### Deploy Web App
+
+1. **Deploy → New deployment**.
+2. Type: **Web app**.
+3. Execute as: **Me**.
+4. Who has access: **Anyone** (karena manager mungkin tidak login Google saat klik dari email).
+5. Deploy → autorisasi → copy **Web App URL**.
+
+### Update Script Properties
+
+Buka Project Settings → Script Properties → tambah/edit:
+
+| Key | Value |
+|---|---|
+| `WEB_APP_URL` | URL dari hasil deploy (yang `/exec` di akhir) |
+
+Tanpa langkah ini, link Approve/Reject di email tidak akan berfungsi.
+
+---
+
+## Langkah 5 — Test End-to-End
+
+Sekarang waktunya uji coba beneran:
+
+1. **Buka Form** (link sharing form Anda) di browser.
+2. **Submit** pengajuan dengan email yang ada di tab `Kuota-Cuti`. Pilih tanggal cuti misal 3 hari.
+3. **Cek inbox manager** (email `ADMIN_EMAIL`) → harus ada email "Approval Cuti" dengan 2 tombol.
+4. **Cek tab `Pengajuan-Cuti`** → harus ada baris baru status `Pending`.
+5. **Klik tombol Approve** di email.
+6. Browser membuka halaman "Berhasil".
+7. **Cek**:
+   - Tab `Pengajuan-Cuti` → Status berubah jadi `Approved`.
+   - Tab `Kuota-Cuti` → angka Sisa berkurang.
+   - **Calendar** Anda → event "Cuti — <nama>" muncul.
+   - **Inbox karyawan** → email "✅ Cuti Anda di-Approved".
+   - Tab `Audit` → ada log "approval-approve".
+
+**Test kasus tolak kuota**: submit pengajuan 20 hari padahal sisa cuma 12. Karyawan harus dapat email tolak otomatis, dan tidak ada baris masuk ke `Pengajuan-Cuti`.
+
+---
+
+## Langkah 6 — Update Kode Setelah Selesai Test
+
+Karena ini Web App `/exec`, **setiap kali ubah kode, kode lama yang dipakai sampai Anda re-deploy**.
+
+- Update minor (untuk test): pakai **Test deployments** URL.
+- Update final: **Deploy → Manage deployments → Edit ✏️ → Version: New version → Deploy**. URL tetap sama.
+
+---
+
+## Langkah 7 — (Opsional) Anti Double-Proses
+
+Kadang trigger Form Submit jalan dua kali (network glitch). Kalau tidak di-handle, pengajuan sama bisa masuk dobel.
+
+Bungkus `pengajuanCutiHandler` dengan cache check:
+
+```javascript
+function pengajuanCutiHandler(e) {
+  const responseId = e.response.getId();
   const cache = CacheService.getScriptCache();
+
   if (cache.get(`cuti:${responseId}`)) {
     console.log("Sudah diproses. Skip.");
     return;
   }
 
-  // Lock supaya 2 trigger paralel tidak race
   const lock = LockService.getScriptLock();
   lock.tryLock(10000);
-
   try {
     if (cache.get(`cuti:${responseId}`)) return;   // double-check
 
-    cutiHandler(parseFormResponse(e.response));
-    cache.put(`cuti:${responseId}`, "1", 21600);
+    _prosesPengajuan(e);                            // logic asli dipindah ke sini
+    cache.put(`cuti:${responseId}`, "1", 21600);   // tandai sudah diproses, 6 jam
   } finally {
     lock.releaseLock();
   }
 }
-```
 
----
-
-## 6. Performance — Hindari N+1 Round-Trip
-
-Kalau orchestrator memanggil 10 helper, masing-masing baca Sheet 1×, total 10× round-trip yang sama. Pola lebih baik: **read-once, share via parameter**.
-
-```javascript
-// ❌ Kurang efisien
-function dailyReport() {
-  const totalDeal = sheets_countDeal();        // baca sheet 1×
-  const topProduct = sheets_topProduct();       // baca sheet 1×
-  const totalRevenue = sheets_totalRevenue();   // baca sheet 1×
-}
-
-// ✓ Read once, hitung di memory
-function dailyReportV2() {
-  const data = sheets_readPipeline();          // 1× round-trip
-
-  const totalDeal = data.length;
-  const topProduct = analyze_topProduct(data);
-  const totalRevenue = analyze_totalRevenue(data);
+function _prosesPengajuan(e) {
+  // ... isi logika asli pengajuanCutiHandler (Langkah 3) ditaruh di sini
 }
 ```
 
----
-
-## 7. Project Nyata: Sistem Cuti Lengkap
-
-Use case lengkap multi-service:
-
-**User flow**:
-1. Karyawan submit Google Form (kolom: nama, jenis cuti, tanggal mulai, tanggal selesai, alasan).
-2. Trigger `onFormSubmit` jalan.
-3. Sistem:
-   - Validasi: cek sisa kuota cuti di Sheet `Kuota`.
-   - Bikin Doc "Form Cuti — <nama> — <tgl>" dari template.
-   - Kirim email ke manager (subject: `[Approval Cuti] <nama>`) + link approve/reject Web App.
-4. Manager klik link approve → Web App update Sheet, kirim email ke karyawan, bikin event Calendar (kalau approved), kurangi kuota.
-5. Audit log semua langkah.
-
-```mermaid
-flowchart TD
-    F["📝 Karyawan submit Form"] --> T1["onFormSubmit"]
-    T1 --> V{"Validasi kuota<br/>cuti cukup?"}
-    V -->|Tidak| E1["Email tolak ke<br/>karyawan"]
-    V -->|Ya| D1["Bikin Doc<br/>Form Cuti"]
-    D1 --> M1["Email ke manager<br/>+ link Web App"]
-
-    M1 -.-> Manager["👨‍💼 Manager"]
-    Manager -->|klik approve| W["doGet?action=approve&id=..."]:::wa
-    W --> S1["Update Sheet Cuti<br/>Status: Approved"]
-    S1 --> C1["Bikin event Calendar"]
-    C1 --> K1["Kurangi kuota di Sheet"]
-    K1 --> E2["Email ke karyawan<br/>(approved)"]
-
-    Manager -->|klik reject| W2["doGet?action=reject&id=..."]:::wa
-    W2 --> S2["Update Status: Rejected"]
-    S2 --> E3["Email ke karyawan<br/>(rejected, alasan)"]
-
-    classDef wa fill:#dbeafe,stroke:#3b82f6,stroke-width:2px
-```
-
-Implementasi lengkap di `contoh.js` (`pengajuanCutiHandler`, `doGet` untuk approve/reject).
+> Pola yang sama bisa Anda terapkan di Web App `doGet` kalau khawatir manager double-klik tombol Approve.
 
 ---
 
-## 8. Best Practices Akhir
+## Checklist Selesai
 
-1. **Modularkan** ke beberapa file `.gs` per concern. `Main.gs` cuma orchestrator + trigger.
-2. **Setiap helper return value yang berguna** (URL, ID) — bukan cuma side-effect, supaya bisa di-chain.
-3. **Audit log selalu** untuk workflow production. Sheet `Audit` adalah teman terbaik debug.
-4. **Catat secret di Script Properties**, bukan kode.
-5. **Idempotent by default** — assume trigger akan jalan dua kali.
-6. **Lock untuk race condition** kalau bisa overlap.
-7. **Read-once, compute many** — hindari N+1 round-trip.
-8. **Test end-to-end** di test Sheet/Folder/Calendar dulu sebelum production.
-9. **Trigger production dipasang lewat kode** (`pasangSemuaTrigger()`) supaya reproducible.
-10. **Pisahkan config**: `Config.gs` berisi semua ID, email, threshold supaya gampang diubah.
+- [ ] Karyawan bisa submit Form → pengajuan masuk Sheet.
+- [ ] Kalau kuota tidak cukup → otomatis dapat email tolak.
+- [ ] Manager dapat email dengan tombol Approve/Reject.
+- [ ] Tombol Approve menulis status, bikin event Calendar, kurangi kuota, email karyawan.
+- [ ] Tombol Reject menulis status dan email karyawan.
+- [ ] Tab `Audit` mencatat semua langkah.
+- [ ] Saya paham kenapa harus re-deploy setelah ubah kode.
+- [ ] (Bonus) Sudah implement anti double-proses dengan Cache + Lock.
 
----
+**Selamat! 🎉 Sistem cuti Anda sudah berfungsi end-to-end.**
 
-## 9. Penutup
-
-**Yang harus dikuasai sebelum lanjut**:
-
-- [ ] Bisa men-design arsitektur multi-service dengan orchestrator + helper.
-- [ ] Bisa modularkan project ke beberapa file `.gs`.
-- [ ] Bisa pakai CacheService dan PropertiesService sesuai konteks.
-- [ ] Paham pola idempotency dengan response ID + cache.
-- [ ] Bisa implement audit log dan error handling granular.
-- [ ] Sadar trade-off N+1 round-trip — read once, compute many.
-- [ ] Bisa bangun workflow end-to-end seperti Sistem Cuti Lengkap.
-
-**Selanjutnya: Capstone Project (di folder `Capstone-Project`).**
+Inilah project akhir dari materi ini. Pola yang sama bisa Anda terapkan untuk **sistem internal apa pun** — pengadaan barang, klaim reimburse, request lembur, dll.
