@@ -22,7 +22,7 @@ Setelah menuntaskan materi, Anda bisa:
 - Membuat script otomasi untuk Google Sheets (laporan, dashboard, data cleaning)
 - Mengirim email otomatis dan personalisasi (mail merge, notifikasi, slip gaji)
 - Mengelola file Google Drive secara otomatis (backup, organisasi, generate dokumen)
-- Membuat workflow approval (pengajuan cuti, reimbursement, onboarding)
+- Membuat workflow approval end-to-end (sistem pengajuan cuti — sebagai project akhir)
 - Membuat web app sederhana sebagai portal internal
 - Konsumsi & menerima webhook dari layanan luar (Slack, Telegram, dll)
 - Menjadwalkan semua proses di atas agar berjalan otomatis
