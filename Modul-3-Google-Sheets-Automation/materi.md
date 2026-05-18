@@ -51,29 +51,6 @@ Dipakai di mini-project section 10 (Sinkronisasi Sheet → Email).
 - **Wajib** ganti `(email Anda)` dengan email Anda sendiri supaya notifikasi masuk ke inbox sendiri saat testing.
 - Kolom **Notif Terkirim** akan diisi otomatis dengan timestamp setelah email terkirim.
 
-### CSV (alternatif import cepat)
-
-Kalau lebih cepat **File → Import → Upload → Replace current sheet** ketimbang copy-paste:
-
-```csv
-Nama,Divisi,Gaji,Status
-Sari,Finance,8000000,
-Budi,Marketing,7500000,
-Tina,Finance,9000000,
-Andi,IT,9500000,
-Rina,HR,6500000,
-```
-
-```csv
-Nomor Pesanan,Email Customer,Status,Notif Terkirim
-PSN-001,GANTI@EMAIL.ANDA,Selesai,
-PSN-002,GANTI@EMAIL.ANDA,Selesai,
-PSN-003,GANTI@EMAIL.ANDA,Diproses,
-PSN-004,GANTI@EMAIL.ANDA,Dibatalkan,
-```
-
-> Untuk soal di `latihan.md`, ada dua tab tambahan (`Penjualan` & `Produk`) — struktur lengkapnya ada di petunjuk latihan, tidak perlu disetup sekarang.
-
 ---
 
 ## 1. Hierarki Object Sheets
