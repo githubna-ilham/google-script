@@ -121,17 +121,64 @@ semua.forEach((s) => console.log(s.getName()));
 
 ### 3.1 Notasi A1 vs koordinat numerik
 
-```javascript
-sheet.getRange("A1");              // satu sel
-sheet.getRange("A1:C5");           // area persegi panjang
-sheet.getRange("A:A");             // seluruh kolom A
-sheet.getRange("1:1");             // seluruh baris 1
+`getRange()` punya **dua gaya pemanggilan** yang menunjuk area sama tapi cara nulisnya beda. Pahami kapan pakai yang mana, karena keduanya akan muncul terus di sisa modul.
 
-sheet.getRange(1, 1);              // (row, col) → A1
-sheet.getRange(2, 1, 5, 3);        // (row, col, numRows, numCols) → A2:C6
+#### A. Notasi A1 (string)
+
+Pakai alamat sel ala spreadsheet — yang biasa Anda lihat di pojok kiri atas Sheet.
+
+```javascript
+sheet.getRange("A1");      // satu sel: kolom A, baris 1
+sheet.getRange("A1:C5");   // area persegi A1 sampai C5 (3 kolom × 5 baris)
+sheet.getRange("A:A");     // SELURUH kolom A
+sheet.getRange("1:1");     // SELURUH baris 1
 ```
 
-> **Numbering** dimulai dari **1**, bukan 0. Beda dengan array JavaScript. Sumber bug klasik.
+**Cocok kalau**: alamatnya statis dan Anda tahu persis selnya. Lebih enak dibaca — `"A1:C5"` langsung kelihatan posisinya tanpa harus ngitung.
+
+#### B. Koordinat numerik (angka)
+
+Pakai pasangan angka `(row, col)` atau `(row, col, numRows, numCols)`.
+
+```javascript
+sheet.getRange(1, 1);         // (row, col) → A1
+sheet.getRange(2, 1, 5, 3);   // (row, col, numRows, numCols) → A2:C6
+```
+
+**Cocok kalau**: posisi dihitung dinamis di kode — misalnya `lastRow + 1`, hasil loop, atau `headers.indexOf("Gaji") + 1`.
+
+#### Perbandingan singkat
+
+| Aspek | A1 (`"A1:C5"`) | Numerik (`2, 1, 5, 3`) |
+|---|---|---|
+| Bentuk | String | Angka |
+| Enak dibaca manusia | ✅ | ❌ (harus ngitung) |
+| Enak dihitung di kode | ❌ (harus concat string) | ✅ |
+| Cocok untuk | Alamat tetap | Alamat dinamis / hasil hitungan |
+
+#### Kapan pakai yang mana
+
+```javascript
+// Statis → A1 lebih jelas
+const header = sheet.getRange("A1:D1").getValues()[0];
+
+// Dinamis → numerik
+const lastRow = sheet.getLastRow();
+sheet.getRange(lastRow + 1, 1, newRows.length, 4).setValues(newRows);
+```
+
+#### Catatan penting yang sering bikin bug
+
+1. **Sheet 1-indexed, JS array 0-indexed.**
+   `getRange(1, 1)` = sel A1, **bukan** A2. Tapi kalau hasilnya jadi array via `getValues()`, sel A1 ada di `data[0][0]`. Sumber bug klasik saat campur dua dunia.
+
+2. **Kolom huruf ↔ angka:** A=1, B=2, ..., Z=26, AA=27, AB=28, ...
+   Konversi: `sheet.getRange(2, 5)` = `"E2"`.
+
+3. **Dua argumen vs empat argumen:**
+   - `getRange(row, col)` → satu sel.
+   - `getRange(row, col, numRows, numCols)` → blok area.
+   Lupa dua argumen terakhir = cuma dapat satu sel walau niatnya blok.
 
 ### 3.2 Membaca: `getValue` vs `getValues`
 
