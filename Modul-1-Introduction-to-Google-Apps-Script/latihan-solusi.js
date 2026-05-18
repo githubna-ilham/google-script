@@ -43,19 +43,7 @@ function kirimRingkasanHari() {
 }
 
 
-/* ----- Soal 3: Format Rupiah ----- */
-function formatRupiah(angka) {
-  return "Rp " + angka.toLocaleString("id-ID");
-}
-
-function ujiFormatRupiah() {
-  [1000, 25000, 150000, 2500000, 1500000000].forEach((n) => {
-    console.log(`${n} → ${formatRupiah(n)}`);
-  });
-}
-
-
-/* ----- Soal 4: Komposisi Function ----- */
+/* ----- Soal 3: Komposisi Function ----- */
 function getJamSapaan() {
   const jam = new Date().getHours();
   if (jam >= 4 && jam < 11)  return "pagi";
@@ -78,7 +66,7 @@ function tampilSapaan() {
 }
 
 
-/* ----- Soal 5: Try/Catch ----- */
+/* ----- Soal 4: Try/Catch ----- */
 function bagi(a, b) {
   if (b === 0) {
     throw new Error("Tidak bisa membagi dengan nol");
@@ -100,28 +88,7 @@ function ujiBagi() {
 }
 
 
-/* ----- Soal 6: Eksplorasi Service (jawaban referensi) ----- */
-function tebakService() {
-  // 1. Membuat folder di Drive
-  // → DriveApp.createFolder("Folder Baru")
-
-  // 2. Mengirim email
-  // → MailApp.sendEmail(...) atau GmailApp.sendEmail(...)
-
-  // 3. Baca cell A1 di Sheet
-  // → SpreadsheetApp.getActiveSpreadsheet().getRange("A1").getValue()
-
-  // 4. Buat event Calendar
-  // → CalendarApp.createEvent(...) atau CalendarApp.getDefaultCalendar().createEvent(...)
-
-  // 5. Panggil API eksternal
-  // → UrlFetchApp.fetch(url)
-
-  console.log("Lihat komentar di kode untuk jawaban.");
-}
-
-
-/* ----- Soal 7: Pencatat Aktivitas ----- */
+/* ----- Soal 5: Pencatat Aktivitas ----- */
 function catatAktivitas(deskripsi) {
   const waktu = Utilities.formatDate(
     new Date(),
@@ -158,10 +125,8 @@ function ujiCatatAktivitas() {
 function jalankanSemuaSolusi() {
   const semua = [
     salamSesuaiJam,
-    ujiFormatRupiah,
     tampilSapaan,
-    ujiBagi,
-    tebakService
+    ujiBagi
   ];
   semua.forEach((fn, i) => {
     console.log(`\n========== Soal ${i + 1} ==========`);

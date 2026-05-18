@@ -71,32 +71,7 @@ END FUNCTION
 
 ---
 
-## Soal 3 — Helper Function untuk Format Rupiah
-
-Buat function `formatRupiah(angka)` yang mengembalikan string rupiah Indonesia.
-Contoh: `formatRupiah(2500000)` → `"Rp 2.500.000"`.
-
-Lalu buat function `ujiFormatRupiah()` yang menguji 5 nilai berbeda dan mencetak hasilnya.
-
-> Hint: `angka.toLocaleString("id-ID")`.
-
-**Pseudocode**:
-```
-FUNCTION formatRupiah(angka):
-    angkaTerformat ← format angka pakai locale "id-ID"   // hasilnya pakai titik ribuan
-    KEMBALIKAN "Rp " + angkaTerformat
-END FUNCTION
-
-FUNCTION ujiFormatRupiah():
-    daftarNilai ← [1000, 25000, 150000, 2500000, 1500000000]
-    UNTUK SETIAP n DI daftarNilai:
-        cetak (n + " → " + formatRupiah(n))
-END FUNCTION
-```
-
----
-
-## Soal 4 — Komposisi Function
+## Soal 3 — Komposisi Function
 
 Buat function-function kecil:
 - `getJamSapaan()` → mengembalikan kata sapaan ("pagi", "siang", "sore", "malam") sesuai jam saat ini.
@@ -132,7 +107,7 @@ END FUNCTION
 
 ---
 
-## Soal 5 — Try/Catch Practice
+## Soal 4 — Try/Catch Practice
 
 Buat function `bagi(a, b)` yang mengembalikan `a / b`. Tambahkan validasi: kalau `b === 0`, **lempar error** dengan pesan `"Tidak bisa membagi dengan nol"`.
 
@@ -163,35 +138,7 @@ END FUNCTION
 
 ---
 
-## Soal 6 — Eksplorasi Service
-
-Tanpa melihat dokumentasi resmi, **berdasarkan intuisi nama**, tebak service apa yang Anda pakai untuk:
-
-1. Membuat folder baru di Drive — `____.createFolder("Folder Baru")`
-2. Mengirim email — `____.sendEmail(...)`
-3. Membaca isi cell A1 di sebuah Sheet — `____...getRange("A1").getValue()`
-4. Membuat event di Calendar besok jam 10 pagi — `____.createEvent(...)`
-5. Memanggil API cuaca eksternal lewat HTTP — `____.fetch(url)`
-
-Tulis jawaban sebagai komentar di kode Anda. Cek di tabel Modul 1 §4 untuk verifikasi.
-
-**Pseudocode pola jawaban**:
-```
-FUNCTION tebakService():
-    // Drive   →  service global yang mengelola file & folder Drive
-    // Email   →  service global untuk kirim email
-    // Sheet   →  service global untuk Spreadsheet → ambil active → cell
-    // Calendar→  service global untuk Calendar → bikin event
-    // HTTP    →  service global untuk fetch URL
-
-    cetak "Lihat komentar di atas untuk jawaban."
-END FUNCTION
-```
-> Tips: nama-nama service di Apps Script polanya `XxxApp`. Pikirkan apa "Xxx"-nya dari topiknya.
-
----
-
-## Soal 7 — Mini-Project: Pencatat Aktivitas
+## Soal 5 — Mini-Project: Pencatat Aktivitas
 
 Buat function `catatAktivitas(deskripsi)` yang:
 
