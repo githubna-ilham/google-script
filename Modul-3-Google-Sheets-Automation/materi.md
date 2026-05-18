@@ -2,7 +2,77 @@
 
 Sheets adalah service yang **paling sering** dipakai di Apps Script. Kalau Modul 2 mengenalkan tiga service horizontal (Drive/Docs/Calendar), Modul 3 menggali **dalam** ke satu service yang jadi backbone hampir setiap project otomatisasi: Google Sheets.
 
-> 📊 **Sebelum mulai**, siapkan spreadsheet template di [`template-spreadsheet.md`](./template-spreadsheet.md). File itu berisi struktur tab + sample data yang dipakai di seluruh contoh & latihan modul ini — biar Anda tidak menebak-nebak format datanya.
+---
+
+## 0. Siapkan Spreadsheet Template
+
+Semua contoh kode di modul ini berjalan di atas spreadsheet dengan struktur tetap. Bikin dulu Sheet-nya supaya Anda tidak menebak-nebak format data tiap kali menyalin kode.
+
+### Langkah Setup
+
+1. Buka [https://sheets.google.com](https://sheets.google.com) → klik **Blank** untuk Sheet baru.
+2. Rename file jadi **"Modul-3-Sheets-Automation"**.
+3. Bikin **dua tab** sesuai daftar di bawah (klik **+** di kiri bawah untuk tab baru, lalu rename).
+4. Copy header + sample data ke tab masing-masing.
+5. Copy ID Sheet dari URL — bagian setelah `/d/` dan sebelum `/edit`:
+   ```
+   https://docs.google.com/spreadsheets/d/  <-- ID DI SINI -->  /edit
+   ```
+6. Ganti placeholder `"SHEET_ID"` di semua contoh kode dengan ID itu.
+
+> **Tip format**: kolom `Gaji` di-set **Number → Number** (bukan Currency). Format Rupiah biar di-handle oleh script supaya output-nya terkontrol.
+
+### Tab `Karyawan`
+
+Tab utama yang dipakai di section 3, 4, 5, 6, 8, dan 9.
+
+| Nama  | Divisi    | Gaji    | Status |
+|-------|-----------|---------|--------|
+| Sari  | Finance   | 8000000 |        |
+| Budi  | Marketing | 7500000 |        |
+| Tina  | Finance   | 9000000 |        |
+| Andi  | IT        | 9500000 |        |
+| Rina  | HR        | 6500000 |        |
+
+- Kolom **Status** sengaja kosong — akan diisi oleh contoh `tandaiGajiTinggi_*` dan `cariBaris`.
+- Baris 1 = header; data mulai baris 2.
+
+### Tab `Pesanan`
+
+Dipakai di mini-project section 10 (Sinkronisasi Sheet → Email).
+
+| Nomor Pesanan | Email Customer    | Status     | Notif Terkirim |
+|---------------|-------------------|------------|----------------|
+| PSN-001       | (email Anda)      | Selesai    |                |
+| PSN-002       | (email Anda)      | Selesai    |                |
+| PSN-003       | (email Anda)      | Diproses   |                |
+| PSN-004       | (email Anda)      | Dibatalkan |                |
+
+- **Wajib** ganti `(email Anda)` dengan email Anda sendiri supaya notifikasi masuk ke inbox sendiri saat testing.
+- Kolom **Notif Terkirim** akan diisi otomatis dengan timestamp setelah email terkirim.
+
+### CSV (alternatif import cepat)
+
+Kalau lebih cepat **File → Import → Upload → Replace current sheet** ketimbang copy-paste:
+
+```csv
+Nama,Divisi,Gaji,Status
+Sari,Finance,8000000,
+Budi,Marketing,7500000,
+Tina,Finance,9000000,
+Andi,IT,9500000,
+Rina,HR,6500000,
+```
+
+```csv
+Nomor Pesanan,Email Customer,Status,Notif Terkirim
+PSN-001,GANTI@EMAIL.ANDA,Selesai,
+PSN-002,GANTI@EMAIL.ANDA,Selesai,
+PSN-003,GANTI@EMAIL.ANDA,Diproses,
+PSN-004,GANTI@EMAIL.ANDA,Dibatalkan,
+```
+
+> Untuk soal di `latihan.md`, ada dua tab tambahan (`Penjualan` & `Produk`) — struktur lengkapnya ada di petunjuk latihan, tidak perlu disetup sekarang.
 
 ---
 
