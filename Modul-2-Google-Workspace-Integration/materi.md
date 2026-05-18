@@ -449,97 +449,7 @@ function eventMingguIni() {
 
 ---
 
-## 5. Mini-Project Terpadu — "Pencatat Rapat"
-
-Skenario nyata yang menggabungkan tiga service:
-
-> **Target**: Setiap kali rapat dibuat di Calendar, otomatis bikin Doc "Notulen — [judul rapat]" di folder Drive khusus, lalu link Doc ditempelkan ke deskripsi event.
-
-### Alur
-
-```mermaid
-flowchart TD
-    A([Trigger: jalankan manual<br/>atau on-form-submit]) --> B[Ambil parameter rapat<br/>judul, mulai, selesai, peserta]
-    B --> C[CalendarApp.createEvent]
-    C --> D[DocumentApp.create<br/>'Notulen — judul']
-    D --> E[Isi template notulen<br/>judul, tanggal, agenda kosong]
-    E --> F[Pindah Doc ke folder<br/>'Notulen Rapat']
-    F --> G[Set link Doc<br/>ke deskripsi event]
-    G --> H([Selesai])
-
-    style C fill:#dbeafe,stroke:#3b82f6
-    style D fill:#dcfce7,stroke:#16a34a
-    style F fill:#fef3c7,stroke:#f59e0b
-```
-
-### Implementasi
-
-```javascript
-function buatRapatDenganNotulen(judul, mulaiISO, selesaiISO, peserta) {
-  const cal = CalendarApp.getDefaultCalendar();
-  const mulai   = new Date(mulaiISO);
-  const selesai = new Date(selesaiISO);
-
-  // 1) Bikin folder notulen kalau belum ada
-  const folderName = "Notulen Rapat";
-  let folder;
-  const cari = DriveApp.getFoldersByName(folderName);
-  if (cari.hasNext()) {
-    folder = cari.next();
-  } else {
-    folder = DriveApp.createFolder(folderName);
-  }
-
-  // 2) Bikin Doc notulen
-  const doc = DocumentApp.create(`Notulen — ${judul}`);
-  const body = doc.getBody();
-  body.appendParagraph(judul).setHeading(DocumentApp.ParagraphHeading.HEADING1);
-  body.appendParagraph(`Tanggal: ${mulai.toLocaleString("id-ID")}`);
-  body.appendParagraph(`Peserta: ${peserta}`);
-  body.appendParagraph("");
-  body.appendParagraph("Agenda").setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendListItem("(isi agenda)");
-  body.appendParagraph("");
-  body.appendParagraph("Catatan").setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph("(notulen rapat)");
-  doc.saveAndClose();
-
-  // 3) Pindah Doc ke folder Notulen
-  const docFile = DriveApp.getFileById(doc.getId());
-  docFile.moveTo(folder);
-
-  // 4) Bikin event Calendar dengan link Doc
-  const linkDoc = doc.getUrl();
-  const event = cal.createEvent(judul, mulai, selesai, {
-    description: `Notulen: ${linkDoc}`,
-    guests: peserta,
-    sendInvites: true
-  });
-
-  console.log("Event: " + event.getId());
-  console.log("Doc  : " + linkDoc);
-
-  return { eventId: event.getId(), docUrl: linkDoc };
-}
-
-function ujiRapatNotulen() {
-  buatRapatDenganNotulen(
-    "Sprint Review #21",
-    "2026-05-20T14:00:00+07:00",
-    "2026-05-20T15:00:00+07:00",
-    "anggota1@kantor.id,anggota2@kantor.id"
-  );
-}
-```
-
-**Pola yang baru muncul di sini**:
-- **Cek-lalu-buat**: cari folder, kalau tidak ada bikin baru. Pola umum supaya idempoten.
-- **Object antar service**: ambil `doc.getUrl()` lalu pakai sebagai bahan input ke `cal.createEvent`. Service Apps Script saling melengkapi.
-- **Return value**: function tidak hanya log, tapi juga return ID — supaya caller bisa lanjut proses (mis. simpan ID ke Sheet).
-
----
-
-## 6. Pertimbangan Kuota & Performa
+## 5. Pertimbangan Kuota & Performa
 
 Apps Script bukan tanpa batas. Setiap akun punya **kuota harian**:
 
@@ -560,7 +470,7 @@ Kuota lebih besar untuk Workspace (G Suite) berbayar. Detail terbaru: [https://d
 
 ---
 
-## 7. Penutup
+## 6. Penutup
 
 **Yang harus dikuasai sebelum lanjut**:
 
