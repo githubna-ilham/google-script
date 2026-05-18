@@ -55,37 +55,43 @@ File ini adalah **referensi bentuk spreadsheet** yang dipakai di seluruh Modul 3
 
 ## Bagian B — Tab untuk `latihan.md`
 
-### Tab `Penjualan`
+Latihan Modul 3 menggunakan konteks **lembaga pelatihan**: data peserta + data program. Tiga soal latihan fokus ke integrasi Sheets dengan Gmail, Docs, dan Calendar.
 
-| ID Transaksi | Tanggal     | Customer    | Email Customer    | Produk    | Qty | Harga Satuan | Status        | Notif Terkirim |
-|--------------|-------------|-------------|-------------------|-----------|-----|--------------|---------------|----------------|
-| TRX-001      | 2026-05-01  | PT Alpha    | alpha@kantor.id   | Mouse     | 3   | 150000       | Selesai       |                |
-| TRX-002      | 2026-05-02  | PT Beta     | beta@kantor.id    | Keyboard  | 5   | 350000       | Diproses      |                |
-| TRX-003      | 2026-05-02  | PT Gamma    | gamma@kantor.id   | Monitor   | 2   | 2500000      | Selesai       |                |
-| TRX-004      | 2026-05-03  | PT Delta    | delta@kantor.id   | Headset   | 4   | 450000       | Dibatalkan    |                |
-| TRX-005      | 2026-05-04  | PT Epsilon  | (email Anda)      | Mouse     | 10  | 150000       | Selesai       |                |
-| TRX-006      | 2026-05-05  | PT Zeta     | zeta@kantor.id    | Webcam    | 2   | 800000       | Diproses      |                |
-| TRX-007      | 2026-05-06  | PT Alpha    | alpha@kantor.id   | Monitor   | 1   | 2500000      | Selesai       |                |
-| TRX-008      | 2026-05-07  | PT Eta      | eta@kantor.id     | Keyboard  | 3   | 350000       | Selesai       |                |
+> 📁 **Selain Sheet**, latihan butuh **satu folder Drive** bernama `Latihan-M3-Output` (untuk menampung Doc yang digenerate Soal 2). Copy ID folder dari URL setelah `/folders/`.
+
+### Tab `Peserta`
+
+| ID Peserta | Tanggal Daftar | Nama          | Email             | Instansi   | Program | Nilai | Status          | Notif Email | Link Sertifikat |
+|------------|----------------|---------------|-------------------|------------|---------|-------|-----------------|-------------|------------------|
+| PST-001    | 2026-05-01     | Sari Wulan    | sari@kantor.id    | PT Alpha   | GAS-101 | 88    | Lulus           |             |                  |
+| PST-002    | 2026-05-02     | Budi Pratama  | budi@kantor.id    | PT Beta    | GAS-201 | 72    | Lulus           |             |                  |
+| PST-003    | 2026-05-02     | Tina Sari     | tina@kantor.id    | PT Gamma   | GAS-101 | 95    | Lulus           |             |                  |
+| PST-004    | 2026-05-03     | Andi Pratama  | andi@kantor.id    | PT Delta   | GAS-301 |       | Sedang Berjalan |             |                  |
+| PST-005    | 2026-05-04     | Rina Wati     | (email Anda)      | PT Epsilon | GAS-101 | 55    | Tidak Lulus     |             |                  |
+| PST-006    | 2026-05-05     | Joko Santoso  | (email Anda)      | PT Zeta    | GAS-201 | 80    | Lulus           |             |                  |
+| PST-007    | 2026-05-06     | Mira Lestari  | mira@kantor.id    | PT Alpha   | GAS-101 | 90    | Lulus           |             |                  |
+| PST-008    | 2026-05-07     | Dimas Aji     | dimas@kantor.id   | PT Eta     | GAS-201 |       | Sedang Berjalan |             |                  |
 
 **Format kolom**:
-- `Tanggal`: Format → Number → Date (yyyy-mm-dd).
-- `Qty`, `Harga Satuan`: Number biasa, jangan currency.
-- `Email Customer`: minimal 1 baris harus email Anda (untuk Soal 6 — notif email).
+- `Tanggal Daftar`: Format → Number → Date (yyyy-mm-dd).
+- `Nilai`: Number biasa (0–100); biarkan kosong untuk peserta yang belum dinilai.
+- `Email`: minimal **2 baris** harus email Anda sendiri — supaya email sertifikat (Soal 1) & undangan Calendar (Soal 3) bisa diverifikasi tanpa spam orang lain.
+- `Notif Email`, `Link Sertifikat`: kosongkan — diisi otomatis oleh script.
 
-### Tab `Produk`
+### Tab `Program`
 
-| Kode | Nama Produk | Stok | Harga    |
-|------|-------------|------|----------|
-| P001 | Mouse       | 50   | 150000   |
-| P002 | Keyboard    | 30   | 350000   |
-| P003 | Monitor     | 8    | 2500000  |
-| P004 | Headset     | 25   | 450000   |
-| P005 | Webcam      | 12   | 800000   |
+| Kode    | Nama Program                    | Kapasitas | Biaya    | Tanggal Mulai | Tanggal Selesai | Lokasi          |
+|---------|---------------------------------|-----------|----------|---------------|-----------------|-----------------|
+| GAS-101 | Google Apps Script Fundamental  | 30        | 1500000  | 2026-06-01    | 2026-06-03      | Online (Meet)   |
+| GAS-201 | Sheets & Gmail Automation       | 25        | 2000000  | 2026-06-08    | 2026-06-10      | Online (Meet)   |
+| GAS-301 | Web Apps & API Integration      | 20        | 2500000  | 2026-06-15    | 2026-06-17      | Jakarta (Onsite)|
+| GAS-401 | Multi-Service Integration       | 15        | 3000000  | 2026-06-22    | 2026-06-24      | Jakarta (Onsite)|
+| GAS-501 | Capstone & Mentoring            | 10        | 5000000  | 2026-06-29    | 2026-07-01      | Online (Meet)   |
 
-**Catatan**:
-- Stok awal sengaja dibikin **lebih kecil dari beberapa total Qty di Penjualan**, supaya Soal 3 (Validasi Stok) ada baris yang gagal karena stok kurang.
-- Test cepat: TRX-005 minta `Mouse × 10` → stok awal 50, akan jadi 40 setelah validasi.
+**Format kolom**:
+- `Tanggal Mulai`, `Tanggal Selesai`: Format → Number → Date. **Wajib** sebagai Date — Soal 3 cek `instanceof Date` sebelum bikin event.
+- `Biaya`: Number biasa.
+- Solusi Soal 3 akan menambah kolom `Event ID` di sebelah `Lokasi` secara otomatis (tidak perlu disiapkan manual).
 
 ---
 
@@ -114,29 +120,29 @@ PSN-003,GANTI@EMAIL.ANDA,Diproses,
 PSN-004,GANTI@EMAIL.ANDA,Dibatalkan,
 ```
 
-### `Penjualan.csv`
+### `Peserta.csv`
 
 ```csv
-ID Transaksi,Tanggal,Customer,Email Customer,Produk,Qty,Harga Satuan,Status,Notif Terkirim
-TRX-001,2026-05-01,PT Alpha,alpha@kantor.id,Mouse,3,150000,Selesai,
-TRX-002,2026-05-02,PT Beta,beta@kantor.id,Keyboard,5,350000,Diproses,
-TRX-003,2026-05-02,PT Gamma,gamma@kantor.id,Monitor,2,2500000,Selesai,
-TRX-004,2026-05-03,PT Delta,delta@kantor.id,Headset,4,450000,Dibatalkan,
-TRX-005,2026-05-04,PT Epsilon,GANTI@EMAIL.ANDA,Mouse,10,150000,Selesai,
-TRX-006,2026-05-05,PT Zeta,zeta@kantor.id,Webcam,2,800000,Diproses,
-TRX-007,2026-05-06,PT Alpha,alpha@kantor.id,Monitor,1,2500000,Selesai,
-TRX-008,2026-05-07,PT Eta,eta@kantor.id,Keyboard,3,350000,Selesai,
+ID Peserta,Tanggal Daftar,Nama,Email,Instansi,Program,Nilai,Status,Notif Email,Link Sertifikat
+PST-001,2026-05-01,Sari Wulan,sari@kantor.id,PT Alpha,GAS-101,88,Lulus,,
+PST-002,2026-05-02,Budi Pratama,budi@kantor.id,PT Beta,GAS-201,72,Lulus,,
+PST-003,2026-05-02,Tina Sari,tina@kantor.id,PT Gamma,GAS-101,95,Lulus,,
+PST-004,2026-05-03,Andi Pratama,andi@kantor.id,PT Delta,GAS-301,,Sedang Berjalan,,
+PST-005,2026-05-04,Rina Wati,GANTI@EMAIL.ANDA,PT Epsilon,GAS-101,55,Tidak Lulus,,
+PST-006,2026-05-05,Joko Santoso,GANTI@EMAIL.ANDA,PT Zeta,GAS-201,80,Lulus,,
+PST-007,2026-05-06,Mira Lestari,mira@kantor.id,PT Alpha,GAS-101,90,Lulus,,
+PST-008,2026-05-07,Dimas Aji,dimas@kantor.id,PT Eta,GAS-201,,Sedang Berjalan,,
 ```
 
-### `Produk.csv`
+### `Program.csv`
 
 ```csv
-Kode,Nama Produk,Stok,Harga
-P001,Mouse,50,150000
-P002,Keyboard,30,350000
-P003,Monitor,8,2500000
-P004,Headset,25,450000
-P005,Webcam,12,800000
+Kode,Nama Program,Kapasitas,Biaya,Tanggal Mulai,Tanggal Selesai,Lokasi
+GAS-101,Google Apps Script Fundamental,30,1500000,2026-06-01,2026-06-03,Online (Meet)
+GAS-201,Sheets & Gmail Automation,25,2000000,2026-06-08,2026-06-10,Online (Meet)
+GAS-301,Web Apps & API Integration,20,2500000,2026-06-15,2026-06-17,Jakarta (Onsite)
+GAS-401,Multi-Service Integration,15,3000000,2026-06-22,2026-06-24,Jakarta (Onsite)
+GAS-501,Capstone & Mentoring,10,5000000,2026-06-29,2026-07-01,Online (Meet)
 ```
 
 ---
@@ -146,9 +152,10 @@ P005,Webcam,12,800000
 - [ ] Sheet bernama `Modul-3-Sheets-Automation` sudah dibuat.
 - [ ] Tab `Karyawan` (5 baris data) — untuk `contoh.js`.
 - [ ] Tab `Pesanan` (4 baris data, email diganti email Anda) — untuk mini-project di `contoh.js`.
-- [ ] Tab `Penjualan` (8 baris data, minimal 1 baris email Anda) — untuk `latihan.md`.
-- [ ] Tab `Produk` (5 baris data) — untuk `latihan.md`.
-- [ ] ID Sheet sudah di-copy dan di-set sebagai `SHEET_ID` di kode.
+- [ ] Tab `Peserta` (8 baris data, minimal 2 baris email Anda) — untuk `latihan.md`.
+- [ ] Tab `Program` (5 baris data, `Tanggal Mulai`/`Tanggal Selesai` di-format **Date**) — untuk `latihan.md`.
+- [ ] Folder Drive `Latihan-M3-Output` sudah dibuat (untuk Soal 2).
+- [ ] ID Sheet di-set sebagai `SHEET_ID` dan ID folder sebagai `FOLDER_ID` di kode.
 - [ ] Pertama kali Run script, autorisasi sudah di-Allow.
 
 ---
@@ -156,10 +163,10 @@ P005,Webcam,12,800000
 ## FAQ
 
 **Q: Apakah saya harus bikin Sheet baru, atau bisa pakai yang sudah ada?**
-A: Boleh pakai yang sudah ada, **asalkan** Anda bikin tab baru dengan nama persis seperti tabel di atas (`Karyawan`, `Pesanan`, dst). Script kita pakai `getSheetByName(...)` jadi nama tab harus match.
+A: Boleh pakai yang sudah ada, **asalkan** Anda bikin tab baru dengan nama persis seperti tabel di atas (`Karyawan`, `Pesanan`, `Peserta`, `Program`). Script kita pakai `getSheetByName(...)` jadi nama tab harus match.
 
-**Q: Kenapa email saya yang dipakai untuk customer?**
-A: Supaya saat script kirim "email notifikasi pesanan selesai" ke customer, emailnya masuk ke inbox Anda — Anda bisa verifikasi langsung tanpa minta bantuan customer asli. Di production nanti tinggal ganti pakai email customer beneran.
+**Q: Kenapa email saya yang dipakai untuk customer/peserta?**
+A: Supaya saat script kirim email sertifikat (Soal 1 latihan) atau undangan Calendar (Soal 3 latihan), emailnya masuk ke inbox Anda — bisa langsung diverifikasi tanpa spam orang lain. Di production tinggal ganti pakai email peserta asli.
 
 **Q: Bisa pakai container-bound (script di-bind ke Sheet) atau standalone?**
 A: Dua-duanya bisa.

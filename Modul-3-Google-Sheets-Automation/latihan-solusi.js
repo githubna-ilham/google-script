@@ -1,9 +1,20 @@
 /**
  * Modul 3 — Solusi Latihan
- * Set SHEET_ID di bawah sebelum jalankan (atau pakai container-bound).
+ *
+ * Tiga latihan integrasi:
+ *   Soal 1: Sheets ↔ Gmail   — mail merge sertifikat
+ *   Soal 2: Sheets ↔ Docs    — generate Surat Keterangan Lulus
+ *   Soal 3: Sheets ↔ Calendar — jadwal pelatihan + undangan peserta
+ *
+ * Setup:
+ *   - Set SHEET_ID  ke ID Sheet "Latihan-M3".
+ *   - Set FOLDER_ID ke ID folder Drive "Latihan-M3-Output" (untuk Soal 2).
+ *   - Pastikan minimal 1–2 email di tab Peserta adalah email Anda sendiri
+ *     supaya bisa verifikasi tanpa spam orang lain.
  */
 
-const SHEET_ID = "GANTI_DENGAN_ID_SHEET_LATIHAN_M3";
+const SHEET_ID  = "GANTI_DENGAN_ID_SHEET_LATIHAN_M3";
+const FOLDER_ID = "GANTI_DENGAN_ID_FOLDER_OUTPUT";
 
 function _ss() {
   if (SHEET_ID && SHEET_ID !== "GANTI_DENGAN_ID_SHEET_LATIHAN_M3") {
@@ -12,6 +23,7 @@ function _ss() {
   return SpreadsheetApp.getActiveSpreadsheet();
 }
 
+/** Baca tab → array of object pakai header sebagai key. */
 function _readAsObjects(sheetName) {
   const sheet = _ss().getSheetByName(sheetName);
   const data  = sheet.getDataRange().getValues();
@@ -23,266 +35,236 @@ function _readAsObjects(sheetName) {
   });
 }
 
+/** Map kode program → object program (untuk lookup nama/biaya/tanggal). */
+function _mapProgram() {
+  const map = {};
+  _readAsObjects("Program").forEach((p) => { map[p.Kode] = p; });
+  return map;
+}
 
-/* ----- Soal 1: Statistik Penjualan ----- */
-function statistikPenjualan() {
-  const rows = _readAsObjects("Penjualan");
-  const total = rows.length;
-  const selesai = rows.filter((r) => r.Status === "Selesai");
-  const totalNilai = selesai.reduce((sum, r) => sum + r.Qty * r["Harga Satuan"], 0);
-
-  // Top customer (by jumlah baris Selesai)
-  const customerCount = {};
-  selesai.forEach((r) => {
-    customerCount[r.Customer] = (customerCount[r.Customer] || 0) + 1;
-  });
-  const topCustomer = Object.entries(customerCount).sort((a, b) => b[1] - a[1])[0];
-
-  // Top produk (by jumlah Qty Selesai)
-  const produkQty = {};
-  selesai.forEach((r) => {
-    produkQty[r.Produk] = (produkQty[r.Produk] || 0) + r.Qty;
-  });
-  const topProduk = Object.entries(produkQty).sort((a, b) => b[1] - a[1])[0];
-
-  console.log(`Total transaksi: ${total}`);
-  console.log(`Transaksi Selesai: ${selesai.length}`);
-  console.log(`Total nilai (Selesai): Rp ${totalNilai.toLocaleString("id-ID")}`);
-  console.log(`Top customer: ${topCustomer[0]} (${topCustomer[1]} transaksi)`);
-  console.log(`Top produk : ${topProduk[0]} (${topProduk[1]} qty)`);
+/** Format Date → "yyyy-MM-dd". */
+function _fmtTanggal(date) {
+  return Utilities.formatDate(date, Session.getScriptTimeZone(), "yyyy-MM-dd");
 }
 
 
-/* ----- Soal 2: Tambah Kolom Subtotal ----- */
-function tambahKolomSubtotal() {
-  const sheet = _ss().getSheetByName("Penjualan");
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-
-  let colSub = headers.indexOf("Subtotal") + 1; // 1-indexed
-  if (colSub === 0) {
-    const colHarga = headers.indexOf("Harga Satuan") + 1;
-    sheet.insertColumnAfter(colHarga);
-    sheet.getRange(1, colHarga + 1).setValue("Subtotal");
-    colSub = colHarga + 1;
-  }
-
-  const lastRow = sheet.getLastRow();
-  const data = sheet.getDataRange().getValues();
-  const newHeaders = data[0];
-  const colQty   = newHeaders.indexOf("Qty");
-  const colHargS = newHeaders.indexOf("Harga Satuan");
-  const colSubIdx = newHeaders.indexOf("Subtotal");
-
-  for (let i = 1; i < data.length; i++) {
-    data[i][colSubIdx] = data[i][colQty] * data[i][colHargS];
-  }
-  sheet.getDataRange().setValues(data);
-  sheet.getRange(2, colSub, lastRow - 1, 1).setNumberFormat('"Rp" #,##0');
-  console.log("Kolom Subtotal terisi & diformat.");
-}
-
-
-/* ----- Soal 3: Validasi Stok ----- */
-function validasiStok() {
-  const ss = _ss();
-  const shPenj = ss.getSheetByName("Penjualan");
-  const shProd = ss.getSheetByName("Produk");
-
-  const dataPenj = shPenj.getDataRange().getValues();
-  const dataProd = shProd.getDataRange().getValues();
-
-  const hPenj = dataPenj[0];
-  const hProd = dataProd[0];
-
-  const cProduk  = hPenj.indexOf("Produk");
-  const cQty     = hPenj.indexOf("Qty");
-  const cStatus  = hPenj.indexOf("Status");
-
-  const cNamaP   = hProd.indexOf("Nama Produk");
-  const cStokP   = hProd.indexOf("Stok");
-
-  // Map nama produk → index baris (di array dataProd)
-  const stokMap = {};
-  for (let i = 1; i < dataProd.length; i++) {
-    stokMap[dataProd[i][cNamaP]] = i;
-  }
-
-  for (let i = 1; i < dataPenj.length; i++) {
-    if (dataPenj[i][cStatus] !== "Selesai") continue;
-    const produk = dataPenj[i][cProduk];
-    const qty    = dataPenj[i][cQty];
-    const idx    = stokMap[produk];
-    if (idx === undefined) continue;
-
-    if (dataProd[idx][cStokP] >= qty) {
-      dataProd[idx][cStokP] -= qty;
-    } else {
-      dataPenj[i][cStatus] = "Stok Tidak Cukup";
-    }
-  }
-
-  shPenj.getDataRange().setValues(dataPenj);
-  shProd.getDataRange().setValues(dataProd);
-  console.log("Validasi stok selesai.");
-}
-
-
-/* ----- Soal 4: Custom Function LEVEL_HARGA ----- */
-/**
- * @param {number} hargaSatuan
- * @return {string}
- * @customfunction
- */
-function LEVEL_HARGA(hargaSatuan) {
-  if (hargaSatuan > 1000000) return "Mahal";
-  if (hargaSatuan >= 200000) return "Sedang";
-  return "Murah";
-}
-
-
-/* ----- Soal 5: Export Selesai ke Sheet Baru ----- */
-function exportSelesaiKeSheetBaru() {
-  const ss = _ss();
-  const src = ss.getSheetByName("Penjualan");
-  const data = src.getDataRange().getValues();
-  const headers = data[0];
-  const cStatus = headers.indexOf("Status");
-  const cQty    = headers.indexOf("Qty");
-  const cHarga  = headers.indexOf("Harga Satuan");
-
-  const tanggal = Utilities.formatDate(
-    new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd"
-  );
-  const namaTab = `Penjualan-Selesai-${tanggal}`;
-
-  const existing = ss.getSheetByName(namaTab);
-  if (existing) ss.deleteSheet(existing);
-
-  const dst = ss.insertSheet(namaTab);
-
-  const newHeaders = headers.concat(["Total Nilai"]);
-  const newRows = data.slice(1)
-    .filter((r) => r[cStatus] === "Selesai")
-    .map((r) => r.concat([r[cQty] * r[cHarga]]));
-
-  dst.getRange(1, 1, 1, newHeaders.length).setValues([newHeaders]).setFontWeight("bold");
-  if (newRows.length > 0) {
-    dst.getRange(2, 1, newRows.length, newHeaders.length).setValues(newRows);
-  }
-
-  console.log(`Export selesai → tab "${namaTab}" (${newRows.length} baris).`);
-}
-
-
-/* ----- Soal 6: Kirim Notif Selesai (Idempotent) ----- */
-function kirimNotifSelesai() {
-  const sheet = _ss().getSheetByName("Penjualan");
-  const range = sheet.getDataRange();
-  const data = range.getValues();
+/* ===================================================================
+ * Soal 1 — Sheets ↔ Gmail: Mail Merge Sertifikat
+ * =================================================================== */
+function kirimSertifikatEmail() {
+  const sheet  = _ss().getSheetByName("Peserta");
+  const range  = sheet.getDataRange();
+  const data   = range.getValues();
   const headers = data[0];
 
-  const cId    = headers.indexOf("ID Transaksi");
-  const cCust  = headers.indexOf("Customer");
-  const cEmail = headers.indexOf("Email Customer");
-  const cProd  = headers.indexOf("Produk");
-  const cQty   = headers.indexOf("Qty");
-  const cHarga = headers.indexOf("Harga Satuan");
-  const cStat  = headers.indexOf("Status");
-  const cNotif = headers.indexOf("Notif Terkirim");
+  const cNama    = headers.indexOf("Nama");
+  const cEmail   = headers.indexOf("Email");
+  const cProgKd  = headers.indexOf("Program");
+  const cNilai   = headers.indexOf("Nilai");
+  const cStatus  = headers.indexOf("Status");
+  const cNotif   = headers.indexOf("Notif Email");
 
+  const programMap = _mapProgram();
   const stamp = Utilities.formatDate(
     new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm"
   );
 
   let terkirim = 0;
   for (let i = 1; i < data.length; i++) {
-    if (data[i][cStat] === "Selesai" && !data[i][cNotif]) {
-      const total = data[i][cQty] * data[i][cHarga];
-      MailApp.sendEmail({
-        to: data[i][cEmail],
-        subject: `[Selesai] ${data[i][cId]}`,
-        body: [
-          `Halo ${data[i][cCust]},`,
-          ``,
-          `Pesanan Anda telah selesai diproses.`,
-          ``,
-          `ID Transaksi : ${data[i][cId]}`,
-          `Produk       : ${data[i][cProd]}`,
-          `Qty          : ${data[i][cQty]}`,
-          `Total        : Rp ${total.toLocaleString("id-ID")}`,
-          ``,
-          `Terima kasih.`
-        ].join("\n")
-      });
-      data[i][cNotif] = stamp;
-      terkirim++;
-    }
+    const status   = data[i][cStatus];
+    const sudahNotif = data[i][cNotif];
+    if (status !== "Lulus" || sudahNotif) continue;
+
+    const nama       = data[i][cNama];
+    const email      = data[i][cEmail];
+    const kodeProg   = data[i][cProgKd];
+    const nilai      = data[i][cNilai];
+    const namaProg   = (programMap[kodeProg] || {})["Nama Program"] || kodeProg;
+
+    MailApp.sendEmail({
+      to: email,
+      subject: `[Sertifikat] ${namaProg} — ${nama}`,
+      body: [
+        `Halo ${nama},`,
+        ``,
+        `Selamat! Anda telah dinyatakan LULUS pada program berikut:`,
+        ``,
+        `Nama Program : ${namaProg}`,
+        `Nilai Akhir  : ${nilai}`,
+        ``,
+        `Sertifikat resmi akan menyusul dalam beberapa hari kerja.`,
+        ``,
+        `Salam,`,
+        `Penyelenggara Pelatihan`
+      ].join("\n")
+    });
+
+    data[i][cNotif] = stamp;
+    terkirim++;
   }
 
-  range.setValues(data);
+  // Tulis ulang kolom Notif Email dalam 1 round-trip (untuk seluruh kolom)
+  const kolomNotif = data.map((r) => [r[cNotif]]);
+  sheet.getRange(1, cNotif + 1, kolomNotif.length, 1).setValues(kolomNotif);
+
   console.log(`${terkirim} email dikirim.`);
 }
 
 
-/* ----- Soal 7: Dashboard ----- */
-function bangunDashboard() {
+/* ===================================================================
+ * Soal 2 — Sheets ↔ Docs: Generate Surat Keterangan Lulus
+ * =================================================================== */
+function generateSuratKeterangan() {
+  if (!FOLDER_ID || FOLDER_ID === "GANTI_DENGAN_ID_FOLDER_OUTPUT") {
+    throw new Error("Set FOLDER_ID dulu ke ID folder Latihan-M3-Output.");
+  }
+  const folder = DriveApp.getFolderById(FOLDER_ID);
+
+  const sheet  = _ss().getSheetByName("Peserta");
+  const range  = sheet.getDataRange();
+  const data   = range.getValues();
+  const headers = data[0];
+
+  const cId      = headers.indexOf("ID Peserta");
+  const cNama    = headers.indexOf("Nama");
+  const cInstansi= headers.indexOf("Instansi");
+  const cProgKd  = headers.indexOf("Program");
+  const cNilai   = headers.indexOf("Nilai");
+  const cStatus  = headers.indexOf("Status");
+  const cLink    = headers.indexOf("Link Sertifikat");
+
+  const programMap = _mapProgram();
+  const tz = Session.getScriptTimeZone();
+  const noBulan   = Utilities.formatDate(new Date(), tz, "yyyy-MM");
+  const tglHariIni = Utilities.formatDate(new Date(), tz, "d MMMM yyyy");
+
+  let dibuat = 0;
+  for (let i = 1; i < data.length; i++) {
+    const status     = data[i][cStatus];
+    const sudahPunya = data[i][cLink];
+    if (status !== "Lulus" || sudahPunya) continue;
+
+    const idPst   = data[i][cId];
+    const nama    = data[i][cNama];
+    const instansi= data[i][cInstansi];
+    const kodeProg= data[i][cProgKd];
+    const nilai   = data[i][cNilai];
+    const prog    = programMap[kodeProg] || {};
+    const namaProg= prog["Nama Program"] || kodeProg;
+    const tglMulai  = prog["Tanggal Mulai"]   ? _fmtTanggal(prog["Tanggal Mulai"])   : "-";
+    const tglSelesai= prog["Tanggal Selesai"] ? _fmtTanggal(prog["Tanggal Selesai"]) : "-";
+
+    // Bikin Doc baru
+    const doc  = DocumentApp.create(`Surat Keterangan - ${nama}`);
+    const body = doc.getBody();
+    body.clear();
+
+    body.appendParagraph("SURAT KETERANGAN LULUS")
+        .setHeading(DocumentApp.ParagraphHeading.HEADING1)
+        .setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+
+    body.appendParagraph(`Nomor: SKL/${idPst}/${noBulan}`);
+    body.appendParagraph("");
+    body.appendParagraph("Dengan ini menyatakan bahwa:");
+    body.appendParagraph("");
+    body.appendParagraph(`Nama         : ${nama}`);
+    body.appendParagraph(`Instansi     : ${instansi}`);
+    body.appendParagraph(`Program      : ${namaProg}`);
+    body.appendParagraph(`Periode      : ${tglMulai} s.d. ${tglSelesai}`);
+    body.appendParagraph(`Nilai Akhir  : ${nilai}`);
+    body.appendParagraph("");
+    body.appendParagraph("telah dinyatakan LULUS dan berhak mendapatkan sertifikat.");
+    body.appendParagraph("");
+    body.appendParagraph(`Jakarta, ${tglHariIni}`);
+    body.appendParagraph("Penyelenggara Pelatihan");
+
+    doc.saveAndClose();
+
+    // Pindahkan ke folder output
+    DriveApp.getFileById(doc.getId()).moveTo(folder);
+
+    data[i][cLink] = doc.getUrl();
+    dibuat++;
+  }
+
+  // Tulis ulang kolom Link Sertifikat dalam 1 round-trip
+  const kolomLink = data.map((r) => [r[cLink]]);
+  sheet.getRange(1, cLink + 1, kolomLink.length, 1).setValues(kolomLink);
+
+  console.log(`${dibuat} Doc dibuat di folder Latihan-M3-Output.`);
+}
+
+
+/* ===================================================================
+ * Soal 3 — Sheets ↔ Calendar: Jadwal Pelatihan + Undangan Peserta
+ * =================================================================== */
+function buatJadwalPelatihan() {
   const ss = _ss();
-  let dash = ss.getSheetByName("Dashboard");
-  if (dash) dash.clear();
-  else dash = ss.insertSheet("Dashboard");
+  const shProg = ss.getSheetByName("Program");
+  const dataProg = shProg.getDataRange().getValues();
+  const hProg = dataProg[0];
 
-  const rows = _readAsObjects("Penjualan");
-
-  const total = rows.length;
-  const totalNilai = rows
-    .filter((r) => r.Status === "Selesai")
-    .reduce((s, r) => s + r.Qty * r["Harga Satuan"], 0);
-  const cSelesai    = rows.filter((r) => r.Status === "Selesai").length;
-  const cDiproses   = rows.filter((r) => r.Status === "Diproses").length;
-  const cDibatalkan = rows.filter((r) => r.Status === "Dibatalkan").length;
-
-  // Top customer
-  const custMap = {};
-  rows.filter((r) => r.Status === "Selesai").forEach((r) => {
-    custMap[r.Customer] = (custMap[r.Customer] || 0) + r.Qty * r["Harga Satuan"];
-  });
-  const topCust = Object.entries(custMap).sort((a, b) => b[1] - a[1]).slice(0, 3);
-
-  // Top produk
-  const prodMap = {};
-  rows.filter((r) => r.Status === "Selesai").forEach((r) => {
-    prodMap[r.Produk] = (prodMap[r.Produk] || 0) + r.Qty;
-  });
-  const topProd = Object.entries(prodMap).sort((a, b) => b[1] - a[1]).slice(0, 3);
-
-  // Tulis layout
-  dash.getRange("A1").setValue("Dashboard Penjualan")
-      .setFontWeight("bold").setFontSize(16).setBackground("#fef3c7");
-
-  const ringkasan = [
-    ["Total Transaksi",      total],
-    ["Total Nilai",          totalNilai],
-    ["Transaksi Selesai",    cSelesai],
-    ["Transaksi Diproses",   cDiproses],
-    ["Transaksi Dibatalkan", cDibatalkan]
-  ];
-  dash.getRange(3, 1, ringkasan.length, 2).setValues(ringkasan);
-  dash.getRange("A3:A7").setFontWeight("bold");
-  dash.getRange("B4").setNumberFormat('"Rp" #,##0');
-
-  // Top customer
-  dash.getRange("A9").setValue("Top 3 Customer").setFontWeight("bold");
-  if (topCust.length > 0) {
-    dash.getRange(10, 1, topCust.length, 2).setValues(topCust);
-    dash.getRange(10, 2, topCust.length, 1).setNumberFormat('"Rp" #,##0');
+  // Tambah kolom "Event ID" kalau belum ada
+  let cEvent = hProg.indexOf("Event ID");
+  if (cEvent === -1) {
+    shProg.getRange(1, hProg.length + 1).setValue("Event ID");
+    hProg.push("Event ID");
+    cEvent = hProg.length - 1;
+    // Sinkronkan dataProg supaya kolomnya ada
+    for (let i = 1; i < dataProg.length; i++) dataProg[i].push("");
   }
 
-  // Top produk
-  dash.getRange("A14").setValue("Top 3 Produk").setFontWeight("bold");
-  if (topProd.length > 0) {
-    dash.getRange(15, 1, topProd.length, 2).setValues(topProd);
+  const cKode      = hProg.indexOf("Kode");
+  const cNamaProg  = hProg.indexOf("Nama Program");
+  const cBiaya     = hProg.indexOf("Biaya");
+  const cTglMulai  = hProg.indexOf("Tanggal Mulai");
+  const cTglSelesai= hProg.indexOf("Tanggal Selesai");
+  const cLokasi    = hProg.indexOf("Lokasi");
+
+  // Kumpulkan email peserta per program (skip Tidak Lulus)
+  const pesertaMap = {};   // kodeProgram → [email, ...]
+  _readAsObjects("Peserta").forEach((p) => {
+    if (p.Status === "Tidak Lulus" || !p.Email) return;
+    if (!pesertaMap[p.Program]) pesertaMap[p.Program] = [];
+    pesertaMap[p.Program].push(p.Email);
+  });
+
+  const cal = CalendarApp.getDefaultCalendar();
+  let dibuat = 0;
+
+  for (let i = 1; i < dataProg.length; i++) {
+    if (dataProg[i][cEvent]) continue;  // idempotent: skip kalau sudah ada Event ID
+
+    const kode    = dataProg[i][cKode];
+    const nama    = dataProg[i][cNamaProg];
+    const biaya   = dataProg[i][cBiaya];
+    const lokasi  = dataProg[i][cLokasi];
+    const tMulai  = dataProg[i][cTglMulai];
+    const tSelesai= dataProg[i][cTglSelesai];
+
+    if (!(tMulai instanceof Date) || !(tSelesai instanceof Date)) {
+      console.log(`Skip ${kode}: tanggal belum di-format sebagai Date.`);
+      continue;
+    }
+
+    // Set jam: mulai 09:00, selesai 17:00
+    const start = new Date(tMulai.getFullYear(),  tMulai.getMonth(),  tMulai.getDate(),  9, 0);
+    const end   = new Date(tSelesai.getFullYear(),tSelesai.getMonth(),tSelesai.getDate(),17, 0);
+
+    const guests = (pesertaMap[kode] || []).join(",");
+
+    const event = cal.createEvent(`${kode} — ${nama}`, start, end, {
+      description: `Lokasi: ${lokasi}\nBiaya: Rp ${Number(biaya).toLocaleString("id-ID")}`,
+      guests: guests,
+      sendInvites: true
+    });
+
+    dataProg[i][cEvent] = event.getId();
+    dibuat++;
   }
 
-  dash.autoResizeColumns(1, 2);
-  console.log("Dashboard di-update.");
+  // Tulis ulang tab Program (1 round-trip)
+  shProg.getRange(1, 1, dataProg.length, dataProg[0].length).setValues(dataProg);
+
+  console.log(`${dibuat} event baru dibuat di Calendar.`);
 }
