@@ -233,21 +233,70 @@ User bisa **Cancel di langkah manapun** untuk batalkan keseluruhan — tidak ada
 
 ### 2.3 Alert dengan tombol
 
+Use case: user **klik salah satu sel di tab `Peserta`** untuk memilih baris yang mau dihapus, lalu run menu "Konfirmasi hapus". Function di bawah baca baris terpilih, tampilkan preview siapa yang akan dihapus, baru hapus setelah user konfirmasi.
+
 ```javascript
 function konfirmasiHapus() {
   const ui = SpreadsheetApp.getUi();
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Peserta");
+
+  // 1) Pastikan user lagi di sheet Peserta
+  const aktif = SpreadsheetApp.getActiveSheet();
+  if (aktif.getName() !== "Peserta") {
+    ui.alert("Pilih dulu baris di tab Peserta.");
+    return;
+  }
+
+  // 2) Ambil baris terpilih (row nomor dari posisi cursor)
+  const row = aktif.getActiveRange().getRow();
+  if (row === 1) {
+    ui.alert("Tidak bisa hapus baris header.");
+    return;
+  }
+  if (row > sheet.getLastRow()) {
+    ui.alert("Baris kosong — tidak ada peserta untuk dihapus.");
+    return;
+  }
+
+  // 3) Baca data baris untuk ditampilkan di preview konfirmasi
+  const [idPeserta, , nama] = sheet.getRange(row, 1, 1, 3).getValues()[0];
+
+  // 4) Konfirmasi dengan preview siapa yang akan dihapus
   const respon = ui.alert(
-    "Konfirmasi",
-    "Yakin mau menghapus baris peserta terpilih?",
+    "Konfirmasi Hapus",
+    `Yakin mau menghapus peserta ini?\n\n${idPeserta} — ${nama}\n(baris ${row})`,
     ui.ButtonSet.YES_NO
   );
 
+  // 5) Eksekusi hapus kalau user pilih YES
   if (respon === ui.Button.YES) {
-    // ... eksekusi hapus
-    ui.alert("Berhasil", "Baris peserta dihapus.", ui.ButtonSet.OK);
+    sheet.deleteRow(row);
+    ui.alert("Berhasil", `${idPeserta} (${nama}) dihapus.`, ui.ButtonSet.OK);
   }
 }
 ```
+
+**Method-method baru yang muncul:**
+
+| Method | Fungsi |
+|---|---|
+| `SpreadsheetApp.getActiveSheet()` | Sheet yang sedang dilihat user (bisa beda dari tab `Peserta` — makanya kita cek `.getName()`). |
+| `sheet.getActiveRange()` | Range yang sedang dipilih user (kotak biru di Sheet). |
+| `range.getRow()` | Nomor baris paling atas dari range terpilih (1-indexed). |
+| `sheet.deleteRow(row)` | Hapus 1 baris di posisi tersebut. Baris di bawahnya geser naik. |
+| `sheet.deleteRows(start, n)` | Hapus `n` baris mulai dari `start`. |
+
+**Skenario yang ditangani:**
+
+| Situasi | Hasil |
+|---|---|
+| User di tab lain (mis. `Program`) lalu run | Alert: "Pilih dulu baris di tab Peserta." |
+| User pilih row 1 (header) | Alert: "Tidak bisa hapus baris header." |
+| User pilih row kosong (di bawah data) | Alert: "Baris kosong — tidak ada peserta untuk dihapus." |
+| User pilih baris valid + klik NO | Tidak terjadi apa-apa |
+| User pilih baris valid + klik YES | Baris dihapus + alert sukses |
+
+> `deleteRow` adalah operasi yang tidak bisa di-undo dari kode. Itu kenapa pola **preview + konfirmasi** penting — user lihat dulu siapa yang akan dihapus sebelum YES/NO.
 
 ## 3. HTML Sidebar & Modal
 
