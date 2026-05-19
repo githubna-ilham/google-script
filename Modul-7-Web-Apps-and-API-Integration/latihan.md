@@ -2,206 +2,251 @@
 
 > Latihan ini dipecah jadi **3 tingkat**. Kerjakan urut. Tidak perlu memaksakan diri ke Lanjutan kalau Pemanasan masih terasa berat — **lebih baik paham 3 soal daripada bingung 8 soal**.
 >
-> - 🟢 **Pemanasan** (Soal 1–3) — wajib bisa.
-> - 🟡 **Inti** (Soal 4–6) — wajib bisa sebelum lanjut Modul 8.
-> - 🔴 **Lanjutan / Bonus** (Soal 7–8) — kerjakan kalau punya waktu.
+> - **Pemanasan** (Soal 1–3) — wajib bisa.
+> - **Inti** (Soal 4–6) — wajib bisa sebelum lanjut Modul 8.
+> - **Lanjutan / Bonus** (Soal 7–8) — kerjakan kalau punya waktu.
+
+**Konteks**: Lanjutan studi kasus lembaga pelatihan dari Modul 3, 5, 6. Sekarang admin ingin Web App publik untuk: (a) form pendaftaran peserta yang bisa dishare lewat link, (b) dashboard read-only yang bisa dilihat manajemen/klien, (c) endpoint API untuk integrasi sistem lain.
 
 ---
 
 ## Persiapan (sekali di awal)
 
 1. Buat project Apps Script baru, beri nama `Latihan-Modul-7`.
-2. Buat Spreadsheet baru bernama `Latihan-M7`, lalu **buat tab-tab berikut**:
+2. Bikin (atau pakai existing) Spreadsheet dengan **dua tab**:
+   - `Peserta` (10 kolom — sama persis dengan Modul 3 & 5)
+   - `Program` (7 kolom)
 
-   | Nama tab | Header (baris 1) |
-   |---|---|
-   | `Pendaftar` | `Timestamp \| Nama \| Email \| Kategori` |
-   | `Webhook-Log` | `Timestamp \| Event \| Data` |
-   | `Kurs` | `Tanggal \| Currency \| Rate ke IDR` |
+   Struktur lengkap + sample data 30 baris ada di [`template-spreadsheet.md`](./template-spreadsheet.md).
 
-3. Copy **Sheet ID** (potongan URL antara `/d/` dan `/edit`).
-4. Di editor Apps Script: **⚙️ Project Settings → Script Properties → Add property**:
-   - `PENDAFTAR_SHEET_ID` = Sheet ID di atas
-   - `WEBHOOK_SHEET_ID`  = Sheet ID di atas (sama)
-   - (Optional, untuk Soal 7–8) `SLACK_WEBHOOK_URL`
+3. Buat tab baru untuk webhook log:
+   - `Webhook-Log` dengan header: `Timestamp | Event | Data`
+
+4. Copy **Sheet ID**, lalu di editor Apps Script: **Project Settings → Script Properties → Add property**:
+   - `DASHBOARD_SHEET_ID` = Sheet ID (untuk Soal 2, 3, 4, 5, 7, 8).
+   - `WEBHOOK_SHEET_ID` = Sheet ID yang sama (untuk Soal 5).
+   - (Optional, Soal 7) `SLACK_WEBHOOK_URL` = URL webhook Slack.
 
 5. **Setelah selesai latihan**: hapus deployment lewat **Manage deployments** supaya URL tidak public lagi.
 
-> 💡 **Tip**: kalau bingung di tengah jalan, lihat `contoh.js` — banyak pola yang langsung bisa diadaptasi.
+> **Tip**: kalau bingung di tengah jalan, lihat `contoh.js` & `dashboard.html` — banyak pola yang langsung bisa diadaptasi.
 
 ---
 
-# 🟢 PEMANASAN
+# PEMANASAN
 
-## Soal 1 — Halaman Greeting
+## Soal 1 — Halaman Greeting + Routing
 
 **Tujuan**: paham `doGet`, deploy, baca query parameter.
 
 Buat `doGet(e)` yang menampilkan halaman HTML berisi:
-- Heading **"Halo, {nama}!"** — ambil `nama` dari `?nama=...`. Kalau kosong, pakai `"Tamu"`.
-- Paragraf yang menampilkan email user (atau `"anonymous"` kalau tidak login).
-- Sebuah link `<a>` yang mengarah ke `?nama={nama}&page=daftar` (untuk Soal 2 nanti).
+- Heading **"Halo, {nama}!"** — ambil `nama` dari `?nama=...`. Default `"Tamu"`.
+- Paragraf "Login sebagai: {email}" — dari `Session.getActiveUser().getEmail()` atau `"anonymous"`.
+- Tiga link navigasi:
+  - `?page=daftar` → form pendaftaran (Soal 2)
+  - `?page=stats` → JSON statistik (Soal 3)
+  - `?page=dashboard` → dashboard (Soal 4)
 
 **Test**:
 - Buka URL `.../exec` → "Halo, Tamu!"
 - Buka URL `.../exec?nama=Sari` → "Halo, Sari!"
 
-> 💡 **Hint**: lihat `contoh.js` Bagian 2 untuk pola routing `?page=...`.
+> Hint: pola routing `?page=...` ada di `contoh.js` Bagian 2.
 
 ---
 
-## Soal 2 — Form Pendaftaran Sederhana
+## Soal 2 — Form Pendaftaran Peserta
 
-**Tujuan**: paham kombinasi HTML file + `google.script.run`.
+**Tujuan**: paham kombinasi HTML file + `google.script.run` untuk write data.
 
-Buat file HTML baru bernama `form-daftar.html` dengan field:
-- **Nama** (text)
-- **Email** (email)
-- **Kategori** (dropdown: Webinar / Workshop / Bootcamp)
+Buat file HTML baru `form-daftar.html` dengan field:
+- **Nama** (text, required)
+- **Email** (email, required)
+- **Instansi** (text, required)
+- **Program** (dropdown — isi dengan kode dari tab `Program`, hardcoded boleh untuk soal ini)
 - Tombol **Daftar**
 
-Buat function server `daftarEvent(formData)` yang:
-1. Validasi: nama tidak kosong, email mengandung `@`.
-2. Append baris ke tab `Pendaftar`: `[timestamp, nama, email, kategori]`.
-3. Return `{ ok: true, message: "..." }`.
+Buat function server `daftarPeserta(formData)` yang:
+1. Validasi: semua field tidak kosong + email valid (regex).
+2. **Cek email duplikat** di tab `Peserta` → kalau sudah ada, throw error.
+3. Generate `ID Peserta` (`PST-XXX` dari `getLastRow()`).
+4. Append ke tab `Peserta` 6 kolom pertama: ID, Tanggal Daftar (sekarang), Nama, Email, Instansi, Program.
+5. Return `{ ok: true, message: "Terdaftar: PST-XXX — Nama", idBaru: "PST-XXX" }`.
 
-Di `doGet`, tambahkan rute `?page=daftar` yang membuka form ini.
+Di `doGet`, tambah rute `?page=daftar` yang serve form HTML ini (pakai `HtmlService.createHtmlOutputFromFile`).
 
-**Test**: buka `?page=daftar` → isi form → klik Daftar → cek baris baru muncul di Sheet.
-
-> 💡 **Hint**: lihat `page-form.html` di folder ini — strukturnya bisa ditiru.
+**Test**: buka `?page=daftar` → isi form → klik Daftar → cek baris baru muncul di tab `Peserta` + tampil status sukses di form.
 
 ---
 
-## Soal 3 — Endpoint JSON Public
+## Soal 3 — JSON Endpoint Statistik
 
-**Tujuan**: paham `ContentService` untuk balas JSON.
+**Tujuan**: paham `ContentService` untuk balas JSON (Web App sebagai API).
 
-Tambahkan rute `?page=stats` di `doGet` yang return JSON statistik pendaftar:
+Tambahkan rute `?page=stats` di `doGet` yang return JSON statistik peserta:
 
 ```json
 {
-  "totalPendaftar": 12,
-  "perKategori": {
-    "Webinar": 5,
-    "Workshop": 4,
-    "Bootcamp": 3
+  "totalPeserta": 30,
+  "perStatus": {
+    "Lulus": 20,
+    "Sedang Berjalan": 6,
+    "Tidak Lulus": 4
   },
-  "lastUpdate": "2026-05-12T..."
+  "perProgram": {
+    "GAS-101": 9,
+    "GAS-201": 7,
+    "GAS-301": 8,
+    "GAS-401": 3,
+    "GAS-501": 3
+  },
+  "rataNilai": 80.5,
+  "lastUpdate": "2026-05-20T..."
 }
 ```
 
 **Test**:
 - Buka `.../exec?page=stats` di browser → tampil JSON.
-- Atau test pakai curl:
+- Atau pakai curl:
   ```bash
   curl "https://script.google.com/macros/s/.../exec?page=stats"
   ```
 
-> 💡 **Hint**: baca semua baris Sheet dengan `getDataRange().getValues()`, hitung per kategori pakai object `{ Webinar: 0, Workshop: 0, ... }`.
+> Hint: baca tab `Peserta` dengan `getDataRange().getValues()`, lalu reduce ke object hitungan per kategori.
 
 ---
 
-# 🟡 INTI
+# INTI
 
-## Soal 4 — Webhook Receiver
+## Soal 4 — Dashboard Pelatihan (Read-only)
 
-**Tujuan**: paham `doPost`, baca body request, validasi.
+**Tujuan**: praktik Web App + HTML interaktif + `google.script.run` untuk read data.
+
+Buat dashboard publik yang menampilkan:
+
+1. **Kartu statistik** di atas: Total Peserta, Lulus, Sedang Berjalan, Rata-rata Nilai.
+2. **Tabel Program** (dari tab `Program`): Kode, Nama, Kapasitas, Terisi (count peserta per program), Tanggal Mulai, Lokasi, Biaya.
+3. **Tabel Peserta** (dari tab `Peserta`): ID, Nama, Instansi, Program, Nilai, Status (dengan badge warna sesuai status).
+4. **Filter client-side** di atas tabel peserta:
+   - Input search (cari di Nama, Instansi, atau ID).
+   - Dropdown filter Program.
+   - Dropdown filter Status.
+5. **Tombol Refresh** untuk re-fetch data tanpa reload halaman.
+
+Server function `bacaDataDashboard()`:
+- Baca tab `Peserta` + `Program`.
+- Hitung statistik di server.
+- Return object: `{ statistik, program, peserta }`.
+
+Tambah rute `?page=dashboard` di `doGet` (atau jadikan default).
+
+**Test**: buka URL → lihat dashboard penuh. Coba filter & search → harus responsif tanpa loading.
+
+> Hint: file `dashboard.html` di folder modul sudah ada referensi lengkap — Anda boleh contek strukturnya, tapi pahami dulu sebelum copy.
+
+---
+
+## Soal 5 — Webhook Receiver (Notifikasi dari Sistem Luar)
+
+**Tujuan**: paham `doPost`, baca body request, validasi, integrasi 1-arah dari luar.
+
+Skenario: sistem pembayaran pihak ke-3 (mock) akan POST ke Web App kita setiap kali ada peserta yang bayar — kita catat ke log dan auto-update status peserta jadi `Sedang Berjalan`.
 
 Implementasikan `doPost(e)` yang:
-1. **Parse JSON** dari `e.postData.contents`. Kalau gagal → return `{ ok: false, error: "..." }`.
-2. **Validasi**: payload harus punya field `event` dan `data`. Kalau tidak → return error.
-3. **Append** ke tab `Webhook-Log`: `[timestamp, event, JSON.stringify(data)]`.
-4. **Kalau `event === "alert"`** → kirim email ke email Anda sendiri dengan subject `[ALERT] {data.message}`.
-5. Return `{ ok: true, eventId: <nomor row terakhir> }`.
+1. Parse JSON dari `e.postData.contents`. Kalau gagal → return `{ ok: false, error: "..." }`.
+2. Validasi: payload harus punya field `event` dan `data`. Kalau tidak → return error.
+3. Append ke tab `Webhook-Log`: `[new Date(), event, JSON.stringify(data)]`.
+4. **Kalau `event === "payment.success"`** dan `data.peserta_id` ada:
+   - Cari baris di tab `Peserta` dengan `ID Peserta = data.peserta_id`.
+   - Update kolom `Status` jadi `"Sedang Berjalan"`.
+5. Return `{ ok: true, eventId: <row terakhir di Webhook-Log> }`.
 
-**Test pakai curl** (ganti URL dengan URL Web App Anda):
+**Test pakai curl** (ganti URL):
 ```bash
-# Test normal
+# Test event biasa
 curl -X POST "https://script.google.com/macros/s/.../exec" \
   -H "Content-Type: application/json" \
   -d '{"event":"signup","data":{"email":"a@b.com"}}'
 
-# Test alert (cek inbox setelahnya)
+# Test payment success → harus update Status di tab Peserta
 curl -X POST "https://script.google.com/macros/s/.../exec" \
   -H "Content-Type: application/json" \
-  -d '{"event":"alert","data":{"message":"Server down"}}'
+  -d '{"event":"payment.success","data":{"peserta_id":"PST-010"}}'
 ```
 
-> 💡 **Hint**: ingat — saat deploy ulang dengan `doPost` baru, harus **New version**, bukan cuma save. Test deployment URL juga boleh.
+> Hint: deploy ulang dengan `doPost` baru wajib **New version**, bukan cuma save.
 
 ---
 
-## Soal 5 — Konsumsi API Cuaca
+## Soal 6 — Auto-Lookup Lokasi Pelatihan via API
 
-**Tujuan**: paham `UrlFetchApp.fetch` untuk panggil API luar.
+**Tujuan**: paham `UrlFetchApp.fetch` untuk panggil API luar + integrasi data eksternal ke dashboard.
 
-Buat function `updateCuacaSheet()` yang:
-1. Untuk 5 kota: Jakarta, Surabaya, Bandung, Medan, Makassar.
-2. Panggil `https://wttr.in/<kota>?format=j1` untuk masing-masing.
-3. Buat tab baru `Cuaca` (kalau belum ada) dengan header: `Tanggal | Kota | Temp (°C) | Kondisi | Kelembaban`.
-4. Tulis hasil ke tab `Cuaca`.
+Tambah kolom **"Cuaca Lokasi"** di card setiap program di dashboard — menampilkan cuaca terkini kota lokasi pelatihan onsite (dari API publik).
 
-**Bonus**: pasang **trigger time-driven** untuk jalan setiap 6 jam. (Lihat Modul 6 untuk trigger.) Setelah selesai latihan, hapus trigger-nya.
+1. Untuk tiap program yang `Lokasi`-nya mengandung "Jakarta", "Bandung", atau "Surabaya":
+   - Panggil `https://wttr.in/<kota>?format=j1`.
+   - Ambil `temp_C` dan `weatherDesc[0].value`.
+2. Cache hasil per kota di `PropertiesService` selama **1 jam** — jangan hit API tiap user buka dashboard.
+3. Tampilkan info cuaca di card program (atau di tabel program kolom baru).
 
-> 💡 **Hint**: gunakan loop `forEach` atas array kota. Pakai `muteHttpExceptions: true` supaya 1 kota gagal tidak menghentikan yang lain.
+Untuk program online, tampilkan `"—"` (tidak perlu cek cuaca).
 
----
+**Bonus**: handle error dari API dengan `muteHttpExceptions: true` — kalau gagal, tampilkan "Cuaca tidak tersedia" daripada crash.
 
-## Soal 6 — Kurs Mata Uang Harian
-
-**Tujuan**: praktek API + idempotent (tidak duplikat).
-
-Buat function `updateKursIDR()` yang:
-1. Panggil `https://api.exchangerate-api.com/v4/latest/USD`.
-2. Ambil rate untuk **USD, EUR, SGD, JPY** ke **IDR**.
-3. Append ke tab `Kurs` dengan format: `[tanggal, currency, rate]`.
-4. **Idempotent**: kalau hari ini sudah ada record di tab `Kurs`, **skip** (tidak menambah duplikat).
-
-**Test**: run 2x berturut-turut → log harus bilang "sudah update hari ini" di run kedua.
-
-> 💡 **Hint**:
-> - Format tanggal jadi string `yyyy-MM-dd` pakai `Utilities.formatDate()`.
-> - Loop data Sheet, cek apakah ada baris dengan tanggal sama.
+> Hint:
+> - Extract kota dari `Lokasi`: `const kota = lokasi.match(/(Jakarta|Bandung|Surabaya)/)?.[1];`
+> - Cache pattern: simpan `{ ts, data }` JSON, cek `Date.now() - ts < 3600000` sebelum fetch ulang.
 
 ---
 
-# 🔴 LANJUTAN / BONUS
+# LANJUTAN / BONUS
 
 ## Soal 7 — Slack Notif Saat Ada Pendaftar Baru
 
-**Tujuan**: integrasi 2 arah (form → Sheet → Slack).
+**Tujuan**: integrasi 2-way (form → Sheet → Slack).
 
-1. Setup **Incoming Webhook** di Slack workspace (atau pakai test webhook). Simpan URL-nya di Script Properties sebagai `SLACK_WEBHOOK_URL`.
-2. Modifikasi function `daftarEvent` (Soal 2) — setelah `appendRow` sukses, panggil `kirimKeSlack(...)` dengan pesan:
+1. Setup **Incoming Webhook** di Slack workspace. Simpan URL di Script Properties sebagai `SLACK_WEBHOOK_URL`.
+2. Modifikasi `daftarPeserta` (Soal 2) — setelah `appendRow` sukses, kirim pesan ke Slack:
    ```
-   📥 Pendaftar baru
+   Pendaftar baru
+   ID: <PST-XXX>
    Nama: <nama>
    Email: <email>
-   Kategori: <kategori>
+   Instansi: <instansi>
+   Program: <program>
    ```
-3. Test: daftar lewat form → notif harus muncul di Slack channel.
+3. Pakai pola `kirimKeSlack(text)` dari `contoh.js` Bagian 7.
+4. Jangan biarkan failure di Slack mengganggu pendaftaran — bungkus dengan try/catch, log error ke console kalau gagal, tapi return success ke client (peserta tetap terdaftar).
 
-> 💡 **Hint**: lihat `contoh.js` Bagian 7 untuk function `kirimKeSlack`.
+**Test**: daftar lewat form → cek (a) peserta masuk Sheet, (b) notif muncul di Slack channel.
 
 ---
 
-## Soal 8 — Mini-Project: Dashboard Status Layanan
+## Soal 8 — Mini-Project: Public API Endpoint Lengkap
 
-**Tujuan**: gabungan UrlFetchApp + HtmlService + cache.
+**Tujuan**: gabungan rute Web App + cache + dokumentasi mini.
 
-Buat Web App yang menampilkan **dashboard sederhana**:
-1. Cek 3 endpoint publik (misal: `https://www.google.com`, `https://api.github.com`, `https://wttr.in/Jakarta`).
-2. Untuk tiap endpoint: ukur **response time** (ms) dan **status code**.
-3. Render tabel HTML: `Endpoint | Status | Response Time | Last Check`.
-4. **Kalau status code bukan 200 → baris berwarna merah** (`background: #fee2e2`).
-5. Tambah tombol **Refresh** yang reload halaman.
+Buat **public API** untuk data pelatihan dengan 3 endpoint JSON:
 
-**Bonus level 2**: cache hasil di `PropertiesService` selama 5 menit, supaya kalau ada banyak yang refresh tidak hammer endpoint terus.
+| Endpoint | Return |
+|---|---|
+| `?page=api/programs` | Array semua program: `[{ kode, nama, kapasitas, terisi, biaya, ... }]` |
+| `?page=api/program&kode=GAS-101` | Detail 1 program + daftar peserta-nya |
+| `?page=api/stats` | Statistik global (sama dengan Soal 3, tapi lebih lengkap) |
 
-> 💡 **Hint**:
-> - Ukur waktu: `const start = Date.now(); ... const ms = Date.now() - start;`
-> - Cache: simpan `{ ts, results }` JSON, cek selisih waktu sebelum fetch ulang.
+Aturan:
+1. Semua response pakai `ContentService.createTextOutput(JSON.stringify(...)).setMimeType(JSON)`.
+2. **Cache hasil di PropertiesService selama 5 menit** — supaya kalau sistem lain hit endpoint sering, tidak hammer Sheet terus.
+3. Cache **per-endpoint** (kunci `cache_programs`, `cache_program_<kode>`, `cache_stats`).
+4. Setiap endpoint return field `cached: true/false` + `cachedAt: timestamp` supaya consumer tahu freshness data.
+
+**Test**:
+- `curl ".../exec?page=api/programs"` → JSON array.
+- `curl ".../exec?page=api/program&kode=GAS-101"` → detail + array peserta.
+- Hit endpoint 2x cepat → field `cached: true` di response kedua.
+
+**Bonus**: bikin halaman `?page=api/docs` (HTML) yang dokumentasikan 3 endpoint di atas dengan contoh response — supaya sistem lain tahu cara pakai.
 
 ---
 
@@ -212,9 +257,10 @@ Centang yang sudah bisa dengan tenang (boleh masih perlu cek catatan):
 - [ ] Bisa deploy Web App dan akses URL public.
 - [ ] Bisa baca query string (`e.parameter`) dan POST body (`e.postData.contents`).
 - [ ] Bisa balas HTML (untuk manusia) dan JSON (untuk script lain).
-- [ ] Bisa panggil API luar pakai `UrlFetchApp.fetch` (GET dan POST).
-- [ ] Paham kenapa secret/token wajib di `PropertiesService`.
-- [ ] Bisa terima webhook dengan `doPost` dan log ke Sheet.
+- [ ] Bisa bikin form HTML yang submit ke server lewat `google.script.run`.
+- [ ] Bisa bikin dashboard read-only dengan statistik + tabel + filter client-side.
+- [ ] Bisa panggil API luar pakai `UrlFetchApp.fetch` dengan cache pattern.
+- [ ] Bisa terima webhook dengan `doPost` dan update Sheet berdasar payload.
 - [ ] Paham bedanya **Execute as: Me** vs **User**, dan **Anyone** vs **Logged-in**.
 
-Sudah dicentang minimal Soal 1–6? **Anda siap masuk Modul 8 — Integrating Multiple Google Services.** 🎉
+Sudah dicentang minimal Soal 1–6? **Anda siap masuk Modul 8 — Integrating Multiple Google Services.**

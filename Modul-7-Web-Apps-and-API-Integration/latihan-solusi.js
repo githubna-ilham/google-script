@@ -1,24 +1,30 @@
 /**
- * Modul 7 — Solusi Latihan
+ * Modul 7 — Solusi Latihan (Konteks Pelatihan)
  *
  * File ini berisi jawaban referensi untuk semua soal di latihan.md.
  * Baca solusinya sebagai contoh, JANGAN copy-paste sebelum mencoba sendiri.
  *
  * Setup yang diperlukan (Project Settings → Script Properties):
- *   - PENDAFTAR_SHEET_ID    (wajib, untuk Soal 2, 3, 5, 6)
- *   - WEBHOOK_SHEET_ID      (wajib, untuk Soal 4)
+ *   - DASHBOARD_SHEET_ID    (wajib, untuk Soal 2, 3, 4, 5, 7, 8)
+ *   - WEBHOOK_SHEET_ID      (wajib, untuk Soal 5)
  *   - SLACK_WEBHOOK_URL     (opsional, untuk Soal 7)
  *
- * Struktur Sheet (lihat latihan.md → Persiapan):
- *   Tab "Pendaftar"  : Timestamp | Nama | Email | Kategori
- *   Tab "Webhook-Log": Timestamp | Event | Data
- *   Tab "Kurs"       : Tanggal | Currency | Rate ke IDR
- *   Tab "Cuaca"      : (dibuat otomatis di Soal 5)
+ * Struktur Sheet (lihat template-spreadsheet.md):
+ *   Tab "Peserta"     : ID Peserta | Tanggal Daftar | Nama | Email | Instansi | Program | Nilai | Status | Notif Email | Link Sertifikat
+ *   Tab "Program"     : Kode | Nama Program | Kapasitas | Biaya | Tanggal Mulai | Tanggal Selesai | Lokasi
+ *   Tab "Webhook-Log" : Timestamp | Event | Data
+ *
+ * Deploy:
+ *   1. Klik Deploy → New deployment
+ *   2. Type: Web app
+ *   3. Execute as: Me
+ *   4. Who has access: Anyone
+ *   5. Deploy → Authorize → copy URL
  */
 
 
 /* =========================================================================
- * Helper (dipakai di banyak soal)
+ * Helper umum
  * ========================================================================= */
 
 function _props() {
@@ -26,412 +32,438 @@ function _props() {
 }
 
 function _json(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj))
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function _ss() {
+  const id = _props().getProperty("DASHBOARD_SHEET_ID");
+  if (!id) throw new Error("Set DASHBOARD_SHEET_ID di Script Properties.");
+  return SpreadsheetApp.openById(id);
 }
 
 
 /* =========================================================================
- * SOAL 1, 2, 3 — doGet dengan routing
- *
- * Satu doGet melayani 3 halaman lewat ?page=...
- *   .../exec               → home (Soal 1)
- *   .../exec?page=daftar   → form (Soal 2)
- *   .../exec?page=stats    → JSON statistik (Soal 3)
+ * doGet — routing untuk semua page (Soal 1, 2, 3, 4, 8)
  * ========================================================================= */
 
 function doGet(e) {
   const page = (e && e.parameter && e.parameter.page) || "home";
   const nama = (e && e.parameter && e.parameter.nama) || "Tamu";
 
-  // ----- Soal 3: balas JSON statistik -----
+  // ===== Soal 3: JSON stats =====
   if (page === "stats") {
-    return _statsJson();
+    return _json(_buildStats());
   }
 
-  // ----- Soal 2: form pendaftaran -----
+  // ===== Soal 8: API endpoints =====
+  if (page === "api/programs") {
+    return _json(_cachedApi("cache_programs", _apiPrograms));
+  }
+  if (page === "api/program") {
+    const kode = e.parameter.kode;
+    if (!kode) return _json({ error: "Param 'kode' wajib" });
+    return _json(_cachedApi(`cache_program_${kode}`, () => _apiProgram(kode)));
+  }
+  if (page === "api/stats") {
+    return _json(_cachedApi("cache_stats", _buildStats));
+  }
+  if (page === "api/docs") {
+    return HtmlService.createHtmlOutput(_apiDocsHtml());
+  }
+
+  // ===== Soal 2: form pendaftaran =====
   if (page === "daftar") {
     const tmpl = HtmlService.createTemplateFromFile("form-daftar");
-    tmpl.user = Session.getActiveUser().getEmail() || "anonymous";
+    tmpl.user = Session.getActiveUser().getEmail() || "Tamu";
     return tmpl.evaluate()
-      .setTitle("Pendaftaran")
+      .setTitle("Pendaftaran Pelatihan")
       .addMetaTag("viewport", "width=device-width, initial-scale=1");
   }
 
-  // ----- Soal 1: halaman home -----
-  const userEmail = Session.getActiveUser().getEmail() || "anonymous";
+  // ===== Soal 4: dashboard =====
+  if (page === "dashboard") {
+    return HtmlService.createHtmlOutputFromFile("dashboard")
+      .setTitle("Dashboard Pelatihan")
+      .addMetaTag("viewport", "width=device-width, initial-scale=1");
+  }
+
+  // ===== Soal 1: halaman home (default) =====
+  const email = Session.getActiveUser().getEmail() || "anonymous";
   return HtmlService.createHtmlOutput(`
-    <html><head><base target="_top"></head>
-    <body style="font-family: Arial; max-width: 600px; margin: 30px auto; padding: 0 20px;">
-      <h1>Halo, ${nama}!</h1>
-      <p>User aktif: <b>${userEmail}</b></p>
-      <ul>
-        <li><a href="?nama=${encodeURIComponent(nama)}&page=daftar">📝 Form pendaftaran</a></li>
-        <li><a href="?page=stats">📊 Stats JSON</a></li>
-      </ul>
-    </body></html>
+    <html>
+      <head><base target="_top"><title>Web App Pelatihan</title></head>
+      <body style="font-family: Arial; padding: 24px; max-width: 600px; color: #1f2937;">
+        <h1>Halo, ${nama}!</h1>
+        <p style="color: #6b7280;">Login sebagai: ${email}</p>
+        <ul style="line-height: 2;">
+          <li><a href="?page=daftar">Form Pendaftaran Peserta</a></li>
+          <li><a href="?page=stats">JSON Statistik</a></li>
+          <li><a href="?page=dashboard">Dashboard Pelatihan</a></li>
+          <li><a href="?page=api/docs">API Documentation</a></li>
+        </ul>
+      </body>
+    </html>
   `);
 }
 
 
 /* =========================================================================
- * SOAL 3 — Hitung statistik pendaftar
- *
- * Strategi: baca semua data Sheet → loop, hitung per kategori → balas JSON.
+ * Soal 2 — daftarPeserta (dipanggil dari form-daftar.html)
  * ========================================================================= */
 
-function _statsJson() {
-  const SHEET_ID = _props().getProperty("PENDAFTAR_SHEET_ID");
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName("Pendaftar");
-  const data = sheet.getDataRange().getValues();   // termasuk header
-
-  // Cari index kolom "Kategori" dari header (lebih robust dari hardcode).
-  const header = data[0];
-  const idxKategori = header.indexOf("Kategori");
-
-  // Hitung jumlah per kategori.
-  const perKategori = {};
-  for (let i = 1; i < data.length; i++) {
-    const k = data[i][idxKategori];
-    perKategori[k] = (perKategori[k] || 0) + 1;
+function daftarPeserta(formData) {
+  if (!formData.nama || !formData.email || !formData.instansi || !formData.program) {
+    throw new Error("Semua field wajib diisi.");
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    throw new Error("Format email tidak valid.");
   }
 
-  return _json({
-    totalPendaftar: data.length - 1,    // -1 karena baris header tidak dihitung
-    perKategori:    perKategori,
-    lastUpdate:     new Date().toISOString()
-  });
-}
+  const sheet = _ss().getSheetByName("Peserta");
 
-
-/* =========================================================================
- * SOAL 2 — daftarEvent (dipanggil dari form-daftar.html via google.script.run)
- *
- * Tugas:
- *   1. Validasi input.
- *   2. Cek email duplikat.
- *   3. Append ke Sheet.
- *   4. Kirim email konfirmasi.
- *   5. (Soal 7) Notif ke Slack.
- * ========================================================================= */
-
-function daftarEvent(formData) {
-  // 1. Validasi
-  if (!formData.nama || formData.nama.trim().length < 2) {
-    throw new Error("Nama minimal 2 karakter.");
-  }
-  if (!formData.email || !formData.email.includes("@")) {
-    throw new Error("Email tidak valid.");
-  }
-
-  const SHEET_ID = _props().getProperty("PENDAFTAR_SHEET_ID");
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName("Pendaftar");
-
-  // 2. Cek duplikat email (case-insensitive)
   const data = sheet.getDataRange().getValues();
-  const idxEmail = data[0].indexOf("Email");
-  for (let i = 1; i < data.length; i++) {
-    if (String(data[i][idxEmail]).toLowerCase() === formData.email.toLowerCase()) {
-      throw new Error("Email sudah terdaftar.");
-    }
+  const cEmail = data[0].indexOf("Email");
+  const sudahAda = data.slice(1).some((r) => r[cEmail] === formData.email);
+  if (sudahAda) {
+    throw new Error(`Email ${formData.email} sudah terdaftar.`);
   }
 
-  // 3. Simpan ke Sheet
-  sheet.appendRow([new Date(), formData.nama, formData.email, formData.kategori || ""]);
+  const idBaru = `PST-${String(sheet.getLastRow()).padStart(3, "0")}`;
+  sheet.appendRow([
+    idBaru,
+    new Date(),
+    formData.nama,
+    formData.email,
+    formData.instansi,
+    formData.program
+  ]);
 
-  // 4. Kirim konfirmasi
-  MailApp.sendEmail({
-    to: formData.email,
-    subject: `Pendaftaran ${formData.nama} diterima`,
-    htmlBody: `
-      <p>Halo <b>${formData.nama}</b>,</p>
-      <p>Pendaftaran Anda untuk kategori <b>${formData.kategori}</b> sudah kami terima. 🎉</p>
-    `
-  });
+  // Soal 7: kirim notif Slack (kalau URL tersedia) — fail silent
+  try {
+    _notifSlackPendaftarBaru({ idBaru, ...formData });
+  } catch (err) {
+    console.log("Slack notif gagal: " + err.message);
+  }
 
-  // 5. Soal 7 — notif Slack (function di bawah; skip kalau URL belum di-set)
-  kirimKeSlack(
-    `📥 Pendaftar baru\n` +
-    `Nama: ${formData.nama}\n` +
-    `Email: ${formData.email}\n` +
-    `Kategori: ${formData.kategori}`
-  );
-
-  return { ok: true, message: `Tersimpan: ${formData.nama}` };
+  return { ok: true, message: `Terdaftar: ${idBaru} — ${formData.nama}`, idBaru };
 }
 
 
 /* =========================================================================
- * SOAL 4 — Webhook Receiver (doPost)
- *
- * Test:
- *   curl -X POST <URL> -H "Content-Type: application/json" \
- *     -d '{"event":"alert","data":{"message":"Server down"}}'
+ * Soal 3 — Build stats
+ * ========================================================================= */
+
+function _buildStats() {
+  const ss = _ss();
+  const peserta = _bacaPeserta(ss);
+  const program = _bacaProgram(ss);
+
+  const perStatus = {};
+  const perProgram = {};
+  const nilaiList = [];
+
+  peserta.forEach((p) => {
+    if (p.status) perStatus[p.status] = (perStatus[p.status] || 0) + 1;
+    if (p.program) perProgram[p.program] = (perProgram[p.program] || 0) + 1;
+    if (typeof p.nilai === "number") nilaiList.push(p.nilai);
+  });
+
+  const rataNilai = nilaiList.length > 0
+    ? nilaiList.reduce((a, b) => a + b, 0) / nilaiList.length
+    : null;
+
+  return {
+    totalPeserta: peserta.length,
+    totalProgram: program.length,
+    perStatus,
+    perProgram,
+    rataNilai: rataNilai != null ? +rataNilai.toFixed(2) : null,
+    lastUpdate: new Date().toISOString()
+  };
+}
+
+
+/* =========================================================================
+ * Soal 4 — Dashboard: bacaDataDashboard (dipanggil dari dashboard.html)
+ * ========================================================================= */
+
+function bacaDataDashboard() {
+  const ss = _ss();
+  const peserta = _bacaPeserta(ss);
+  const program = _bacaProgramWithCuaca(ss);   // Soal 6: include cuaca
+
+  const total = peserta.length;
+  const lulus = peserta.filter((p) => p.status === "Lulus").length;
+  const sedangBerjalan = peserta.filter((p) => p.status === "Sedang Berjalan").length;
+  const tidakLulus = peserta.filter((p) => p.status === "Tidak Lulus").length;
+  const nilaiList = peserta.map((p) => p.nilai).filter((n) => typeof n === "number");
+  const rataNilai = nilaiList.length > 0
+    ? nilaiList.reduce((a, b) => a + b, 0) / nilaiList.length
+    : null;
+
+  return {
+    statistik: { total, lulus, sedangBerjalan, tidakLulus, rataNilai },
+    program,
+    peserta
+  };
+}
+
+function _bacaPeserta(ss) {
+  const sheet = ss.getSheetByName("Peserta");
+  const data = sheet.getDataRange().getValues();
+  const h = data[0];
+  return data.slice(1).map((r) => ({
+    id:       r[h.indexOf("ID Peserta")],
+    nama:     r[h.indexOf("Nama")],
+    instansi: r[h.indexOf("Instansi")],
+    program:  r[h.indexOf("Program")],
+    nilai:    r[h.indexOf("Nilai")],
+    status:   r[h.indexOf("Status")]
+  })).filter((p) => p.id);
+}
+
+function _bacaProgram(ss) {
+  const sheet = ss.getSheetByName("Program");
+  const data = sheet.getDataRange().getValues();
+  const h = data[0];
+  const tz = Session.getScriptTimeZone();
+
+  return data.slice(1).map((r) => {
+    const tgl = r[h.indexOf("Tanggal Mulai")];
+    return {
+      kode:         r[h.indexOf("Kode")],
+      nama:         r[h.indexOf("Nama Program")],
+      kapasitas:    r[h.indexOf("Kapasitas")],
+      biaya:        r[h.indexOf("Biaya")],
+      tanggalMulai: tgl instanceof Date
+                      ? Utilities.formatDate(tgl, tz, "yyyy-MM-dd")
+                      : tgl,
+      lokasi:       r[h.indexOf("Lokasi")]
+    };
+  }).filter((p) => p.kode);
+}
+
+
+/* =========================================================================
+ * Soal 5 — doPost: webhook receiver
  * ========================================================================= */
 
 function doPost(e) {
-  // 1. Parse JSON (handle error supaya tidak crash)
   let payload;
   try {
     payload = JSON.parse(e.postData.contents);
   } catch (err) {
-    return _json({ ok: false, error: "Invalid JSON" });
+    return _json({ ok: false, error: "Body bukan JSON valid" });
   }
 
-  // 2. Validasi field wajib
   if (!payload.event || !payload.data) {
-    return _json({ ok: false, error: "Field 'event' dan 'data' wajib ada." });
+    return _json({ ok: false, error: "Field 'event' dan 'data' wajib" });
   }
 
-  // 3. Append ke Sheet
-  const SHEET_ID = _props().getProperty("WEBHOOK_SHEET_ID");
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName("Webhook-Log");
-  sheet.appendRow([new Date(), payload.event, JSON.stringify(payload.data)]);
+  // Log ke Webhook-Log
+  const webhookSheetId = _props().getProperty("WEBHOOK_SHEET_ID");
+  let eventId = null;
 
-  // 4. Kalau event = "alert", kirim email ke admin
-  if (payload.event === "alert") {
-    MailApp.sendEmail({
-      to: Session.getActiveUser().getEmail(),
-      subject: `[ALERT] ${payload.data.message || "(tanpa pesan)"}`,
-      body: JSON.stringify(payload, null, 2)
-    });
+  if (webhookSheetId) {
+    const shLog = SpreadsheetApp.openById(webhookSheetId).getSheetByName("Webhook-Log");
+    if (shLog) {
+      shLog.appendRow([new Date(), payload.event, JSON.stringify(payload.data)]);
+      eventId = shLog.getLastRow();
+    }
   }
 
-  // 5. Balas JSON dengan nomor row sebagai "ID"
-  return _json({ ok: true, eventId: sheet.getLastRow() });
+  // Handler khusus: payment.success → update Status peserta jadi Sedang Berjalan
+  if (payload.event === "payment.success" && payload.data.peserta_id) {
+    const updated = _updateStatusPeserta(payload.data.peserta_id, "Sedang Berjalan");
+    if (updated) {
+      console.log(`Status ${payload.data.peserta_id} updated → Sedang Berjalan`);
+    }
+  }
+
+  return _json({ ok: true, eventId });
+}
+
+function _updateStatusPeserta(idPeserta, statusBaru) {
+  const sheet = _ss().getSheetByName("Peserta");
+  const data = sheet.getDataRange().getValues();
+  const h = data[0];
+  const cId     = h.indexOf("ID Peserta");
+  const cStatus = h.indexOf("Status");
+
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][cId] === idPeserta) {
+      sheet.getRange(i + 1, cStatus + 1).setValue(statusBaru);
+      return true;
+    }
+  }
+  return false;
 }
 
 
 /* =========================================================================
- * SOAL 5 — Update Cuaca dari wttr.in
- *
- * Strategi:
- *   - Loop 5 kota.
- *   - Untuk setiap kota: fetch → parse → append baris.
- *   - Tab "Cuaca" dibuat otomatis kalau belum ada.
+ * Soal 6 — Cuaca lokasi pelatihan (UrlFetchApp + cache 1 jam)
  * ========================================================================= */
 
-function updateCuacaSheet() {
-  const SHEET_ID = _props().getProperty("PENDAFTAR_SHEET_ID");
-  const ss = SpreadsheetApp.openById(SHEET_ID);
+function _bacaProgramWithCuaca(ss) {
+  const program = _bacaProgram(ss);
 
-  // Buat tab "Cuaca" kalau belum ada
-  let sheet = ss.getSheetByName("Cuaca");
-  if (!sheet) {
-    sheet = ss.insertSheet("Cuaca");
-    sheet.appendRow(["Tanggal", "Kota", "Temp (°C)", "Kondisi", "Kelembaban"]);
-  }
-
-  const daftarKota = ["Jakarta", "Surabaya", "Bandung", "Medan", "Makassar"];
-  const rows = [];
-
-  daftarKota.forEach((kota) => {
-    try {
-      const r = UrlFetchApp.fetch(
-        `https://wttr.in/${encodeURIComponent(kota)}?format=j1`,
-        { muteHttpExceptions: true, headers: { "User-Agent": "GAS" } }
-      );
-
-      if (r.getResponseCode() === 200) {
-        const data = JSON.parse(r.getContentText());
-        const c = data.current_condition[0];
-        rows.push([
-          new Date(),
-          kota,
-          parseFloat(c.temp_C),
-          c.weatherDesc[0].value,
-          c.humidity + "%"
-        ]);
-      } else {
-        console.log(`${kota} → status ${r.getResponseCode()}, skip`);
-      }
-    } catch (err) {
-      console.log(`Gagal ${kota}: ${err.message}`);
+  program.forEach((p) => {
+    const match = (p.lokasi || "").match(/(Jakarta|Bandung|Surabaya|Medan|Makassar)/);
+    if (match) {
+      const cuaca = _ambilCuacaCached(match[1]);
+      p.cuaca = cuaca ? `${cuaca.temp}°C, ${cuaca.kondisi}` : "Cuaca tidak tersedia";
+    } else {
+      p.cuaca = "—";    // online → tidak perlu cuaca
     }
   });
 
-  // Tulis sekaligus (lebih cepat dari banyak appendRow)
-  if (rows.length > 0) {
-    sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, 5).setValues(rows);
-  }
-  console.log(`${rows.length} kota di-update.`);
+  return program;
 }
 
-// Trigger 6-jam-an. Jalankan SEKALI untuk pasang.
-function pasangCuacaTrigger() {
-  // Hapus trigger lama dengan handler sama (anti duplikat)
-  ScriptApp.getProjectTriggers()
-    .filter((t) => t.getHandlerFunction() === "updateCuacaSheet")
-    .forEach((t) => ScriptApp.deleteTrigger(t));
+function _ambilCuacaCached(kota) {
+  const key = `cuaca_${kota}`;
+  const cached = _props().getProperty(key);
 
-  ScriptApp.newTrigger("updateCuacaSheet")
-    .timeBased()
-    .everyHours(6)
-    .create();
-
-  console.log("Trigger 6-jam terpasang.");
-}
-
-
-/* =========================================================================
- * SOAL 6 — Kurs IDR (idempotent)
- *
- * Idempotent = aman dijalankan berkali-kali tanpa bikin duplikat.
- * Strategi: sebelum append, cek apakah tanggal hari ini sudah ada.
- * ========================================================================= */
-
-function updateKursIDR() {
-  const SHEET_ID = _props().getProperty("PENDAFTAR_SHEET_ID");
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName("Kurs");
-
-  const tz = Session.getScriptTimeZone();
-  const hariIni = Utilities.formatDate(new Date(), tz, "yyyy-MM-dd");
-
-  // Cek apakah hari ini sudah ada
-  const data = sheet.getDataRange().getValues();
-  const sudahAda = data.slice(1).some((row) => {
-    const t = row[0];
-    const tStr = t instanceof Date
-      ? Utilities.formatDate(t, tz, "yyyy-MM-dd")
-      : String(t);
-    return tStr === hariIni;
-  });
-
-  if (sudahAda) {
-    console.log("Kurs hari ini sudah ada. Skip.");
-    return;
+  if (cached) {
+    const parsed = JSON.parse(cached);
+    if (Date.now() - parsed.ts < 3600000) {   // 1 jam
+      return parsed.data;
+    }
   }
 
-  // Panggil API
-  const r = UrlFetchApp.fetch(
-    "https://api.exchangerate-api.com/v4/latest/USD",
-    { muteHttpExceptions: true }
-  );
-  if (r.getResponseCode() !== 200) {
-    console.log("API gagal:", r.getResponseCode());
-    return;
+  try {
+    const respon = UrlFetchApp.fetch(`https://wttr.in/${encodeURIComponent(kota)}?format=j1`, {
+      muteHttpExceptions: true,
+      headers: { "User-Agent": "GAS-WebApp" }
+    });
+    if (respon.getResponseCode() !== 200) return null;
+
+    const json = JSON.parse(respon.getContentText());
+    const data = {
+      temp:    json.current_condition[0].temp_C,
+      kondisi: json.current_condition[0].weatherDesc[0].value
+    };
+    _props().setProperty(key, JSON.stringify({ ts: Date.now(), data }));
+    return data;
+  } catch (err) {
+    console.log(`Gagal ambil cuaca ${kota}: ${err.message}`);
+    return null;
   }
-
-  const apiData = JSON.parse(r.getContentText());
-  const idrPerUsd = apiData.rates.IDR;
-
-  // Hitung nilai 1 unit currency dalam IDR.
-  // - Untuk USD: langsung apiData.rates.IDR.
-  // - Untuk currency lain X: 1 X = (1 / apiData.rates.X) USD = (1 / rates.X) * idrPerUsd IDR.
-  const currencies = ["USD", "EUR", "SGD", "JPY"];
-  const rows = currencies.map((cur) => {
-    const rateToUsd = apiData.rates[cur] || 1;
-    const rateToIdr = cur === "USD" ? idrPerUsd : idrPerUsd / rateToUsd;
-    return [new Date(), cur, Math.round(rateToIdr * 100) / 100];   // bulatkan 2 desimal
-  });
-
-  sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, 3).setValues(rows);
-  console.log(`${rows.length} kurs ditulis.`);
 }
 
 
 /* =========================================================================
- * SOAL 7 — Helper Slack
- *
- * Function ini sudah dipanggil dari daftarEvent (Soal 2).
- * Aman dipanggil meskipun SLACK_WEBHOOK_URL belum di-set (akan diam-diam skip).
+ * Soal 7 — Slack notif saat ada pendaftar baru
  * ========================================================================= */
 
-function kirimKeSlack(text) {
+function _notifSlackPendaftarBaru(p) {
   const URL = _props().getProperty("SLACK_WEBHOOK_URL");
-  if (!URL) {
-    console.log("SLACK_WEBHOOK_URL belum di-set, skip notif.");
-    return;
-  }
+  if (!URL) return;   // skip kalau belum di-set
+
+  const text = [
+    `*Pendaftar baru*`,
+    `ID: ${p.idBaru}`,
+    `Nama: ${p.nama}`,
+    `Email: ${p.email}`,
+    `Instansi: ${p.instansi}`,
+    `Program: ${p.program}`
+  ].join("\n");
 
   UrlFetchApp.fetch(URL, {
     method: "post",
     contentType: "application/json",
-    payload: JSON.stringify({ text: text }),
+    payload: JSON.stringify({ text }),
     muteHttpExceptions: true
   });
 }
 
 
 /* =========================================================================
- * SOAL 8 — Dashboard Status Layanan (dengan cache 5 menit)
- *
- * Cara akses: tambahkan rute baru di doGet:
- *
- *     if (page === "dashboard") return dashboardStatus();
- *
- * lalu buka .../exec?page=dashboard
+ * Soal 8 — Public API endpoints dengan cache (5 menit)
  * ========================================================================= */
 
-function dashboardStatus() {
-  const targets = [
-    "https://www.google.com",
-    "https://api.github.com",
-    "https://wttr.in/Jakarta?format=3"
-  ];
-
-  const props = _props();
-  const cacheKey = "STATUS_CACHE";
-  const cached = props.getProperty(cacheKey);
-  const now = Date.now();
-
-  // Coba pakai cache kalau masih segar (<5 menit)
-  let results;
+function _cachedApi(key, fn) {
+  const cached = _props().getProperty(key);
   if (cached) {
-    const c = JSON.parse(cached);
-    if (now - c.ts < 5 * 60 * 1000) {
-      results = c.results;
-      console.log("Pakai cache.");
+    const parsed = JSON.parse(cached);
+    if (Date.now() - parsed.ts < 5 * 60 * 1000) {
+      return { ...parsed.data, cached: true, cachedAt: new Date(parsed.ts).toISOString() };
     }
   }
 
-  // Tidak ada cache → fetch ulang
-  if (!results) {
-    results = targets.map((url) => {
-      const start = Date.now();
-      try {
-        const r = UrlFetchApp.fetch(url, {
-          muteHttpExceptions: true,
-          followRedirects: true
-        });
-        return { url, status: r.getResponseCode(), ms: Date.now() - start };
-      } catch (err) {
-        return { url, status: 0, ms: Date.now() - start, error: err.message };
-      }
-    });
-    props.setProperty(cacheKey, JSON.stringify({ ts: now, results }));
-  }
+  const fresh = fn();
+  _props().setProperty(key, JSON.stringify({ ts: Date.now(), data: fresh }));
+  return { ...fresh, cached: false, cachedAt: new Date().toISOString() };
+}
 
-  // Render baris tabel HTML
-  const rows = results.map((r) => {
-    const ok = r.status >= 200 && r.status < 400;
-    const bg = ok ? "" : "background: #fee2e2;";
-    return `
-      <tr style="${bg}">
-        <td style="padding: 6px 12px; border: 1px solid #d1d5db;">${r.url}</td>
-        <td style="padding: 6px 12px; border: 1px solid #d1d5db;">${r.status || "ERR"}</td>
-        <td style="padding: 6px 12px; border: 1px solid #d1d5db;">${r.ms}</td>
-        <td style="padding: 6px 12px; border: 1px solid #d1d5db;">${new Date().toLocaleTimeString("id-ID")}</td>
-      </tr>
-    `;
-  }).join("");
+function _apiPrograms() {
+  const ss = _ss();
+  const peserta = _bacaPeserta(ss);
+  const program = _bacaProgram(ss);
 
-  return HtmlService.createHtmlOutput(`
-    <html><head><base target="_top"></head>
-    <body style="font-family: Arial; max-width: 800px; margin: 30px auto; padding: 0 20px;">
-      <h2>📡 Dashboard Status Layanan</h2>
-      <p><a href="?page=dashboard"><button>🔄 Refresh</button></a></p>
-      <table style="border-collapse: collapse; width: 100%;">
-        <thead>
-          <tr style="background: #f3f4f6;">
-            <th style="padding: 6px 12px; border: 1px solid #d1d5db; text-align: left;">Endpoint</th>
-            <th style="padding: 6px 12px; border: 1px solid #d1d5db;">Status</th>
-            <th style="padding: 6px 12px; border: 1px solid #d1d5db;">Time (ms)</th>
-            <th style="padding: 6px 12px; border: 1px solid #d1d5db;">Last Check</th>
-          </tr>
-        </thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </body></html>
-  `);
+  const terisi = {};
+  peserta.forEach((p) => { terisi[p.program] = (terisi[p.program] || 0) + 1; });
+
+  return {
+    programs: program.map((p) => ({ ...p, terisi: terisi[p.kode] || 0 }))
+  };
+}
+
+function _apiProgram(kode) {
+  const ss = _ss();
+  const peserta = _bacaPeserta(ss);
+  const program = _bacaProgram(ss).find((p) => p.kode === kode);
+
+  if (!program) return { error: `Program ${kode} tidak ditemukan` };
+
+  const pesertaProgram = peserta.filter((p) => p.program === kode);
+  return {
+    program,
+    terisi: pesertaProgram.length,
+    peserta: pesertaProgram
+  };
+}
+
+function _apiDocsHtml() {
+  return `<!DOCTYPE html>
+<html>
+<head><base target="_top"><title>API Documentation</title>
+<style>
+  body { font-family: -apple-system, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; color: #1f2937; line-height: 1.6; }
+  h1, h2 { color: #1e40af; }
+  code { background: #f3f4f6; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
+  pre { background: #1f2937; color: #f9fafb; padding: 16px; border-radius: 6px; overflow-x: auto; font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+  th, td { padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: left; }
+  th { background: #f9fafb; }
+</style>
+</head>
+<body>
+  <h1>API Dokumentasi — Pelatihan</h1>
+  <p>Public API untuk akses data peserta &amp; program. Semua endpoint return JSON. Hasil di-cache 5 menit.</p>
+
+  <h2>Endpoints</h2>
+  <table>
+    <tr><th>Endpoint</th><th>Method</th><th>Deskripsi</th></tr>
+    <tr><td><code>?page=api/programs</code></td><td>GET</td><td>Daftar semua program + jumlah terisi</td></tr>
+    <tr><td><code>?page=api/program&amp;kode=GAS-101</code></td><td>GET</td><td>Detail 1 program + daftar peserta-nya</td></tr>
+    <tr><td><code>?page=api/stats</code></td><td>GET</td><td>Statistik global (total, per status, per program, rata-rata nilai)</td></tr>
+  </table>
+
+  <h2>Contoh response — <code>api/stats</code></h2>
+  <pre>{
+  "totalPeserta": 30,
+  "perStatus": { "Lulus": 20, "Sedang Berjalan": 6, "Tidak Lulus": 4 },
+  "perProgram": { "GAS-101": 9, "GAS-201": 7 },
+  "rataNilai": 80.5,
+  "lastUpdate": "2026-05-20T...",
+  "cached": false,
+  "cachedAt": "2026-05-20T..."
+}</pre>
+
+  <p><a href="?page=home">← Kembali ke home</a></p>
+</body>
+</html>`;
 }
