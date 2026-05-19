@@ -62,10 +62,10 @@ function doGet_sederhana(e) {
 
 function doGet(e) {
   // 'e.parameter' = isi query string. Pakai '||' untuk kasih nilai default.
-  const page = (e && e.parameter && e.parameter.page) || "home";
+  const page = (e && e.parameter && e.parameter.page) || "dashboard";
   const nama = (e && e.parameter && e.parameter.nama) || "Tamu";
 
-  // ----- Rute 1: balas JSON (lihat Bagian 3 untuk detail) -----
+  // ----- Rute 1: balas JSON -----
   if (page === "json") {
     return _json({
       timestamp: new Date().toISOString(),
@@ -74,7 +74,12 @@ function doGet(e) {
     });
   }
 
-  // ----- Rute 2: buka form (file HTML terpisah, lihat Bagian 5) -----
+  // ----- Rute 2: API endpoint untuk data dashboard (kalau dipakai dari luar) -----
+  if (page === "api-data") {
+    return _json(bacaDataDashboard());
+  }
+
+  // ----- Rute 3: form pendaftaran peserta -----
   if (page === "form") {
     const tmpl = HtmlService.createTemplateFromFile("page-form");
     tmpl.user = Session.getActiveUser().getEmail() || "Tamu";
@@ -83,21 +88,117 @@ function doGet(e) {
       .addMetaTag("viewport", "width=device-width, initial-scale=1");
   }
 
-  // ----- Rute default: halaman home dengan link ke rute lain -----
-  return HtmlService.createHtmlOutput(`
-    <html>
-      <head><base target="_top"><title>Demo Web App</title></head>
-      <body style="font-family: Arial; padding: 20px; max-width: 600px;">
-        <h1>Halo, ${nama}!</h1>
-        <p>Web App Apps Script sederhana. Coba klik link di bawah:</p>
-        <ul>
-          <li><a href="?nama=${encodeURIComponent(nama)}&page=form">📝 Form Pendaftaran</a></li>
-          <li><a href="?page=json">📦 JSON Endpoint</a></li>
-        </ul>
-        <p><small>Server time: ${new Date().toString()}</small></p>
-      </body>
-    </html>
-  `);
+  // ----- Rute 4: halaman home dengan link ke rute lain -----
+  if (page === "home") {
+    return HtmlService.createHtmlOutput(`
+      <html>
+        <head><base target="_top"><title>Demo Web App</title></head>
+        <body style="font-family: Arial; padding: 20px; max-width: 600px;">
+          <h1>Halo, ${nama}!</h1>
+          <p>Web App Apps Script. Coba klik link di bawah:</p>
+          <ul>
+            <li><a href="?page=dashboard">Dashboard Pelatihan</a></li>
+            <li><a href="?page=form">Form Pendaftaran</a></li>
+            <li><a href="?page=json">JSON Endpoint</a></li>
+            <li><a href="?page=api-data">API Data Dashboard (JSON)</a></li>
+          </ul>
+          <p><small>Server time: ${new Date().toString()}</small></p>
+        </body>
+      </html>
+    `);
+  }
+
+  // ----- Rute default: dashboard pelatihan -----
+  return HtmlService.createHtmlOutputFromFile("dashboard")
+    .setTitle("Dashboard Pelatihan")
+    .addMetaTag("viewport", "width=device-width, initial-scale=1");
+}
+
+
+/* =========================================================================
+ * BAGIAN 5.5 — Dashboard Pelatihan: baca data Peserta + Program
+ *
+ * Function ini dipanggil dari dashboard.html via google.script.run
+ * (saat halaman dibuka & saat user klik Refresh).
+ *
+ * Return:
+ *   {
+ *     statistik: { total, lulus, sedangBerjalan, tidakLulus, rataNilai },
+ *     program:   [ { kode, nama, kapasitas, biaya, tanggalMulai, lokasi } ],
+ *     peserta:   [ { id, nama, instansi, program, nilai, status } ]
+ *   }
+ *
+ * PRASYARAT: set DASHBOARD_SHEET_ID di Script Properties
+ *            (Sheet harus punya tab "Peserta" & "Program").
+ * ========================================================================= */
+
+function bacaDataDashboard() {
+  const SHEET_ID = PropertiesService.getScriptProperties().getProperty("DASHBOARD_SHEET_ID");
+  if (!SHEET_ID) {
+    throw new Error("Set DASHBOARD_SHEET_ID di Script Properties dulu.");
+  }
+
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const tz = Session.getScriptTimeZone();
+
+  // ----- Tab Program -----
+  const shProgram = ss.getSheetByName("Program");
+  const dataProg = shProgram.getDataRange().getValues();
+  const hProg = dataProg[0];
+  const cKodeP   = hProg.indexOf("Kode");
+  const cNamaP   = hProg.indexOf("Nama Program");
+  const cKap     = hProg.indexOf("Kapasitas");
+  const cBiaya   = hProg.indexOf("Biaya");
+  const cTglM    = hProg.indexOf("Tanggal Mulai");
+  const cLokasi  = hProg.indexOf("Lokasi");
+
+  const program = dataProg.slice(1).map((r) => ({
+    kode:         r[cKodeP],
+    nama:         r[cNamaP],
+    kapasitas:    r[cKap],
+    biaya:        r[cBiaya],
+    tanggalMulai: r[cTglM] instanceof Date
+                    ? Utilities.formatDate(r[cTglM], tz, "yyyy-MM-dd")
+                    : r[cTglM],
+    lokasi:       r[cLokasi]
+  })).filter((p) => p.kode);
+
+  // ----- Tab Peserta -----
+  const shPeserta = ss.getSheetByName("Peserta");
+  const dataPst = shPeserta.getDataRange().getValues();
+  const hPst = dataPst[0];
+  const cId       = hPst.indexOf("ID Peserta");
+  const cNama     = hPst.indexOf("Nama");
+  const cInstansi = hPst.indexOf("Instansi");
+  const cProgram  = hPst.indexOf("Program");
+  const cNilai    = hPst.indexOf("Nilai");
+  const cStatus   = hPst.indexOf("Status");
+
+  const peserta = dataPst.slice(1).map((r) => ({
+    id:       r[cId],
+    nama:     r[cNama],
+    instansi: r[cInstansi],
+    program:  r[cProgram],
+    nilai:    r[cNilai],
+    status:   r[cStatus]
+  })).filter((p) => p.id);
+
+  // ----- Statistik ringkasan -----
+  const total = peserta.length;
+  const lulus = peserta.filter((p) => p.status === "Lulus").length;
+  const sedangBerjalan = peserta.filter((p) => p.status === "Sedang Berjalan").length;
+  const tidakLulus = peserta.filter((p) => p.status === "Tidak Lulus").length;
+
+  const nilaiList = peserta.map((p) => p.nilai).filter((n) => typeof n === "number");
+  const rataNilai = nilaiList.length > 0
+    ? nilaiList.reduce((a, b) => a + b, 0) / nilaiList.length
+    : null;
+
+  return {
+    statistik: { total, lulus, sedangBerjalan, tidakLulus, rataNilai },
+    program,
+    peserta
+  };
 }
 
 
@@ -157,34 +258,50 @@ function ujiCuaca() {
  * BAGIAN 5 — Function yang dipanggil dari form (page-form.html)
  *
  * Saat user klik tombol "Daftar" di form, browser memanggil
- * 'google.script.run.daftarEvent(data)' — yang sebenarnya memanggil
+ * 'google.script.run.daftarPeserta(data)' — yang sebenarnya memanggil
  * function di bawah ini di sisi server.
  *
  * Sebelum jalan, set Script Properties:
- *   PENDAFTAR_SHEET_ID = (ID Sheet dengan tab "Pendaftar")
+ *   DASHBOARD_SHEET_ID = (ID Sheet dengan tab "Peserta" & "Program")
  * ========================================================================= */
 
-function daftarEvent(formData) {
+function daftarPeserta(formData) {
   // Validasi sederhana — kalau gagal, throw → client dapat error.
-  if (!formData.nama || !formData.email) {
-    throw new Error("Nama dan email wajib diisi.");
+  if (!formData.nama || !formData.email || !formData.instansi || !formData.program) {
+    throw new Error("Semua field wajib diisi.");
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    throw new Error("Format email tidak valid.");
   }
 
-  const SHEET_ID = PropertiesService.getScriptProperties().getProperty("PENDAFTAR_SHEET_ID");
+  const SHEET_ID = PropertiesService.getScriptProperties().getProperty("DASHBOARD_SHEET_ID");
   if (!SHEET_ID) {
-    throw new Error("Belum set PENDAFTAR_SHEET_ID di Script Properties.");
+    throw new Error("Belum set DASHBOARD_SHEET_ID di Script Properties.");
   }
 
-  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName("Pendaftar");
+  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName("Peserta");
+
+  // Cek email duplikat
+  const data = sheet.getDataRange().getValues();
+  const cEmail = data[0].indexOf("Email");
+  const sudahAda = data.slice(1).some((r) => r[cEmail] === formData.email);
+  if (sudahAda) {
+    throw new Error(`Email ${formData.email} sudah terdaftar.`);
+  }
+
+  // Generate ID dan append (6 kolom pertama; sisanya kosong)
+  const idBaru = `PST-${String(sheet.getLastRow()).padStart(3, "0")}`;
   sheet.appendRow([
+    idBaru,
     new Date(),
     formData.nama,
     formData.email,
-    formData.kategori || ""
+    formData.instansi,
+    formData.program
   ]);
 
   // Object yang di-return akan diterima di 'withSuccessHandler' di client.
-  return { ok: true, message: `Terdaftar: ${formData.nama}` };
+  return { ok: true, message: `Terdaftar: ${idBaru} — ${formData.nama}`, idBaru };
 }
 
 
@@ -334,6 +451,7 @@ function handleTelegramUpdate(update) {
 function setSemuaProperties() {
   PropertiesService.getScriptProperties().setProperties({
     "WEB_APP_URL":        "https://script.google.com/macros/s/.../exec",
+    "DASHBOARD_SHEET_ID": "GANTI_ID_SHEET_PELATIHAN",   // tab Peserta & Program
     "WEBHOOK_SHEET_ID":   "GANTI_SHEET_ID",
     "PENDAFTAR_SHEET_ID": "GANTI_SHEET_ID",
     "SLACK_WEBHOOK_URL":  "GANTI_URL_SLACK",

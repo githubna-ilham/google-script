@@ -2,7 +2,7 @@
 <html>
 <head>
   <base target="_top">
-  <title>Form Pendaftaran</title>
+  <title>Form Pendaftaran Pelatihan</title>
   <style>
     body { font-family: Arial, sans-serif; max-width: 500px; margin: 30px auto; padding: 0 20px; color: #1f2937; }
     h1 { color: #1e40af; }
@@ -19,7 +19,7 @@
   </style>
 </head>
 <body>
-  <h1>Pendaftaran Event</h1>
+  <h1>Pendaftaran Pelatihan</h1>
   <small>Login: <?= user ?></small>
 
   <label>Nama lengkap</label>
@@ -28,11 +28,16 @@
   <label>Email</label>
   <input id="email" type="email" required>
 
-  <label>Kategori</label>
-  <select id="kategori">
-    <option value="Webinar">Webinar</option>
-    <option value="Workshop">Workshop</option>
-    <option value="Bootcamp">Bootcamp</option>
+  <label>Instansi</label>
+  <input id="instansi" type="text" required>
+
+  <label>Program</label>
+  <select id="program">
+    <option value="GAS-101">GAS-101 — Google Apps Script Fundamental</option>
+    <option value="GAS-201">GAS-201 — Sheets & Gmail Automation</option>
+    <option value="GAS-301">GAS-301 — Web Apps & API Integration</option>
+    <option value="GAS-401">GAS-401 — Multi-Service Integration</option>
+    <option value="GAS-501">GAS-501 — Capstone & Mentoring</option>
   </select>
 
   <button id="btn" onclick="kirim()">Daftar</button>
@@ -43,11 +48,13 @@
       const data = {
         nama:     document.getElementById("nama").value.trim(),
         email:    document.getElementById("email").value.trim(),
-        kategori: document.getElementById("kategori").value
+        instansi: document.getElementById("instansi").value.trim(),
+        program:  document.getElementById("program").value
       };
 
-      if (!data.nama)  return show("Nama wajib.", "error");
-      if (!data.email) return show("Email wajib.", "error");
+      if (!data.nama)     return show("Nama wajib.", "error");
+      if (!data.email)    return show("Email wajib.", "error");
+      if (!data.instansi) return show("Instansi wajib.", "error");
 
       const btn = document.getElementById("btn");
       btn.disabled = true;
@@ -58,13 +65,14 @@
           show(r.message, "ok");
           document.getElementById("nama").value = "";
           document.getElementById("email").value = "";
+          document.getElementById("instansi").value = "";
           btn.disabled = false;
         })
         .withFailureHandler((err) => {
           show("Error: " + err.message, "error");
           btn.disabled = false;
         })
-        .daftarEvent(data);
+        .daftarPeserta(data);
     }
 
     function show(msg, cls) {

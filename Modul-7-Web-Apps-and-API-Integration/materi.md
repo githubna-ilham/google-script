@@ -268,71 +268,226 @@ Atau dari menu: **Project Settings ⚙️ → Script Properties → Add property
 
 ---
 
-## 6. Web App + Form HTML (Kombinasi)
+## 6. Dashboard Pelatihan — Web App Read-only
 
-Ini pola yang paling sering dipakai di dunia nyata: bikin form, user isi, data masuk ke Sheet.
+Studi kasus paling jelas: bikin **dashboard publik** yang menampilkan data peserta & program lembaga pelatihan, bisa di-share via link. Stakeholder (manajemen, klien, calon peserta) tinggal buka URL → lihat statistik & daftar program tanpa perlu akses Sheet.
 
-### 6.1 File HTML terpisah
+### 6.1 Yang akan kita bangun
 
-Di editor: ikon **+** sebelah "Files" → **HTML** → kasih nama `form` (tanpa `.html`).
+```mermaid
+flowchart LR
+    Browser["Browser user<br/>buka URL Web App"] -->|doGet| GAS["Apps Script"]
+    GAS -->|kirim HTML| Browser
+    Browser -->|google.script.run.bacaDataDashboard| Server["bacaDataDashboard"]
+    Server -->|read| Sheet["Sheet:<br/>tab Peserta<br/>tab Program"]
+    Sheet -->|data| Server
+    Server -->|JSON| Browser
+    Browser -->|render statistik + tabel| User["Tampilan dashboard"]
+```
 
-`form.html`:
+Komponen dashboard:
+1. **Kartu statistik** — total peserta, jumlah Lulus (+ persentase), Sedang Berjalan, rata-rata nilai.
+2. **Tabel Program** — kode, nama, kapasitas, terisi, jadwal, lokasi, biaya.
+3. **Tabel Peserta** — dengan filter client-side: search teks, dropdown program, dropdown status.
+4. **Tombol Refresh** — re-fetch data tanpa reload halaman.
+
+### 6.2 Server side — function `bacaDataDashboard()`
+
+Function ini dipanggil dari client lewat `google.script.run`. Tugasnya: baca tab `Peserta` & `Program`, hitung statistik, return semua sebagai satu object JSON.
+
+```javascript
+function bacaDataDashboard() {
+  const SHEET_ID = PropertiesService.getScriptProperties().getProperty("DASHBOARD_SHEET_ID");
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const tz = Session.getScriptTimeZone();
+
+  // ----- Tab Program → array of object -----
+  const shProgram = ss.getSheetByName("Program");
+  const dataProg = shProgram.getDataRange().getValues();
+  const hProg = dataProg[0];
+
+  const program = dataProg.slice(1).map((r) => ({
+    kode:         r[hProg.indexOf("Kode")],
+    nama:         r[hProg.indexOf("Nama Program")],
+    kapasitas:    r[hProg.indexOf("Kapasitas")],
+    biaya:        r[hProg.indexOf("Biaya")],
+    tanggalMulai: Utilities.formatDate(r[hProg.indexOf("Tanggal Mulai")], tz, "yyyy-MM-dd"),
+    lokasi:       r[hProg.indexOf("Lokasi")]
+  })).filter((p) => p.kode);
+
+  // ----- Tab Peserta → array of object -----
+  const shPeserta = ss.getSheetByName("Peserta");
+  const dataPst = shPeserta.getDataRange().getValues();
+  const hPst = dataPst[0];
+
+  const peserta = dataPst.slice(1).map((r) => ({
+    id:       r[hPst.indexOf("ID Peserta")],
+    nama:     r[hPst.indexOf("Nama")],
+    instansi: r[hPst.indexOf("Instansi")],
+    program:  r[hPst.indexOf("Program")],
+    nilai:    r[hPst.indexOf("Nilai")],
+    status:   r[hPst.indexOf("Status")]
+  })).filter((p) => p.id);
+
+  // ----- Hitung statistik -----
+  const total = peserta.length;
+  const lulus = peserta.filter((p) => p.status === "Lulus").length;
+  const sedangBerjalan = peserta.filter((p) => p.status === "Sedang Berjalan").length;
+  const tidakLulus = peserta.filter((p) => p.status === "Tidak Lulus").length;
+
+  const nilaiList = peserta.map((p) => p.nilai).filter((n) => typeof n === "number");
+  const rataNilai = nilaiList.length > 0
+    ? nilaiList.reduce((a, b) => a + b, 0) / nilaiList.length
+    : null;
+
+  return {
+    statistik: { total, lulus, sedangBerjalan, tidakLulus, rataNilai },
+    program,
+    peserta
+  };
+}
+```
+
+**Mengapa baca semua sekaligus, bukan per-tabel?**
+- Satu round-trip ke server lebih cepat dari dua.
+- Statistik di-hitung di server supaya konsisten — kalau di-hitung di client, bisa terjadi race kalau data diubah saat user lagi filter.
+
+### 6.3 doGet — serve halaman dashboard
+
+```javascript
+function doGet(e) {
+  const page = (e && e.parameter && e.parameter.page) || "dashboard";
+
+  if (page === "api-data") {
+    // Optional: expose data sebagai API JSON (untuk dipakai sistem lain)
+    return _json(bacaDataDashboard());
+  }
+
+  // Default: tampilkan dashboard HTML
+  return HtmlService.createHtmlOutputFromFile("dashboard")
+    .setTitle("Dashboard Pelatihan")
+    .addMetaTag("viewport", "width=device-width, initial-scale=1");
+}
+```
+
+`createHtmlOutputFromFile("dashboard")` → ambil isi file `dashboard.html` di project, render ke browser. Nama tanpa ekstensi.
+
+### 6.4 Client side — `dashboard.html`
+
+File HTML di-bagi tiga: **CSS untuk styling**, **markup HTML untuk struktur**, **`<script>` untuk fetch data & filter**. Struktur ringkas (kode lengkap di `dashboard.html`):
+
 ```html
 <!DOCTYPE html>
 <html>
-<body style="font-family: sans-serif; max-width: 400px; margin: 40px auto;">
-  <h2>Pendaftaran</h2>
-  <input id="nama"  placeholder="Nama"  style="width:100%; padding:8px; margin:4px 0;">
-  <input id="email" placeholder="Email" style="width:100%; padding:8px; margin:4px 0;">
-  <button onclick="kirim()" style="padding:8px 16px;">Daftar</button>
-  <p id="status"></p>
+<head>
+  <base target="_top">
+  <style>/* ... CSS card, tabel, badge status, dll ... */</style>
+</head>
+<body>
+  <h1>Dashboard Pelatihan</h1>
+
+  <!-- 1. Kartu statistik -->
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">Total Peserta</div>
+      <div class="stat-value" id="stat-total">0</div>
+    </div>
+    <!-- ... 3 kartu lain: Lulus, Sedang Berjalan, Rata-rata Nilai ... -->
+  </div>
+
+  <!-- 2. Tabel Program -->
+  <div class="card">
+    <table>
+      <thead><tr><th>Kode</th><th>Nama</th>...</tr></thead>
+      <tbody id="tbl-program"></tbody>
+    </table>
+  </div>
+
+  <!-- 3. Tabel Peserta dengan filter -->
+  <div class="card">
+    <div class="filters">
+      <input id="filter-search" placeholder="Cari...">
+      <select id="filter-program"></select>
+      <select id="filter-status"></select>
+    </div>
+    <table>
+      <thead><tr><th>ID</th><th>Nama</th>...</tr></thead>
+      <tbody id="tbl-peserta"></tbody>
+    </table>
+  </div>
 
   <script>
-    function kirim() {
-      const data = {
-        nama:  document.getElementById("nama").value,
-        email: document.getElementById("email").value
-      };
-      document.getElementById("status").innerText = "Mengirim...";
+    let semuaPeserta = [], semuaProgram = [];
 
+    document.addEventListener("DOMContentLoaded", muatData);
+
+    function muatData() {
       google.script.run
-        .withSuccessHandler(r => document.getElementById("status").innerText = "✅ " + r.pesan)
-        .withFailureHandler(e => document.getElementById("status").innerText = "❌ " + e.message)
-        .simpanPendaftar(data);
+        .withSuccessHandler(onDataMuat)
+        .withFailureHandler((err) => alert("Error: " + err.message))
+        .bacaDataDashboard();
     }
+
+    function onDataMuat(data) {
+      semuaPeserta = data.peserta;
+      semuaProgram = data.program;
+
+      // Render statistik ke kartu
+      document.getElementById("stat-total").innerText = data.statistik.total;
+      // ... isi kartu lainnya
+
+      renderProgram();
+      renderPeserta();
+    }
+
+    function renderPeserta() {
+      // Filter di client-side berdasar input search + dropdown
+      const hasil = semuaPeserta.filter((p) => {
+        // ... cek search teks, program, status
+      });
+      // Build <tr> HTML dari hasil filter
+    }
+
+    // Filter listeners
+    document.getElementById("filter-search").addEventListener("input", renderPeserta);
+    document.getElementById("filter-program").addEventListener("change", renderPeserta);
+    document.getElementById("filter-status").addEventListener("change", renderPeserta);
   </script>
 </body>
 </html>
 ```
 
-### 6.2 File Code.gs
+### 6.5 Persiapan & Deploy
+
+Sebelum deploy, set Script Properties supaya server tahu Sheet mana yang dipakai:
 
 ```javascript
-function doGet(e) {
-  return HtmlService.createHtmlOutputFromFile("form")
-    .setTitle("Pendaftaran")
-    .addMetaTag("viewport", "width=device-width, initial-scale=1");
-}
-
-function simpanPendaftar(data) {
-  const sheet = SpreadsheetApp.openById("ID_SHEET_ANDA").getSheetByName("Pendaftar");
-  sheet.appendRow([new Date(), data.nama, data.email]);
-  return { pesan: "Pendaftaran berhasil!" };
+function setupDashboard() {
+  PropertiesService.getScriptProperties()
+    .setProperty("DASHBOARD_SHEET_ID", "1AbCdEf...ID_SHEET_PELATIHAN");
 }
 ```
 
-### 6.3 Cara kerjanya
+Jalankan `setupDashboard()` sekali manual. Lalu:
 
-```mermaid
-flowchart LR
-    Browser["📱 Browser user"] -->|buka URL| DoGet["doGet"]
-    DoGet -->|kirim HTML| Browser
-    Browser -->|user klik Daftar<br/>google.script.run| Simpan["simpanPendaftar"]
-    Simpan -->|appendRow| Sheet["📊 Sheet"]
-    Simpan -->|return| Browser
-```
+1. **Deploy → New deployment → Type: Web app**.
+2. **Execute as: Me** (script jalan atas nama Anda — akses Sheet pakai izin Anda).
+3. **Who has access: Anyone** (publik) atau **Anyone with Google account** (login Google saja).
+4. Deploy → Authorize → copy URL → buka di browser baru → dashboard muncul.
 
-`google.script.run.namaFunction(arg)` adalah jembatan sihir Apps Script yang memanggil function server dari client. Mirip `fetch()` tapi otomatis aman dan tidak perlu URL.
+### 6.6 Pola Penting yang Muncul
+
+1. **Read-only dashboard**: server hanya `read` Sheet (`getValues`), tidak ada `write`. Aman untuk dibagikan publik karena viewer tidak bisa modify data — Sheet asli tetap aman.
+
+2. **Filter di client, bukan server**: setelah `bacaDataDashboard()` selesai, semua data ada di variabel JS `semuaPeserta` & `semuaProgram`. Saat user ketik di kolom search atau pilih dropdown filter, `renderPeserta()` filter array in-memory tanpa panggil server lagi. Lebih responsif & hemat quota.
+
+3. **Statistik dihitung di server**: konsisten dengan source-of-truth (Sheet), client tinggal tampilkan.
+
+4. **Tombol Refresh**: panggil `bacaDataDashboard()` ulang untuk dapat data terbaru dari Sheet. Tidak perlu reload halaman.
+
+5. **Date di-format di server**: kolom Tanggal di Sheet jadi `Date` object di JS. Format ke `"yyyy-MM-dd"` di server pakai `Utilities.formatDate()` supaya client tinggal tampilkan tanpa parsing.
+
+`google.script.run.namaFunction(arg)` adalah jembatan Apps Script untuk memanggil function server dari client. Asynchronous — pakai `.withSuccessHandler(cb)` & `.withFailureHandler(cb)`.
 
 ---
 

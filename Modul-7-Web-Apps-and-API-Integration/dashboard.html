@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <title>Dashboard Pelatihan</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, "Segoe UI", Arial, sans-serif;
+      background: #f3f4f6;
+      color: #111827;
+      padding: 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1 { font-size: 24px; margin-bottom: 4px; }
+    .subtitle { color: #6b7280; margin-bottom: 24px; font-size: 14px; }
+
+    /* Kartu statistik */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .stat {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .stat-label { color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-value { font-size: 32px; font-weight: 700; color: #1e40af; margin-top: 4px; }
+    .stat-sub { font-size: 12px; color: #6b7280; margin-top: 4px; }
+
+    /* Section card */
+    .card {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .card-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Tabel */
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+    th { background: #f9fafb; font-weight: 600; color: #374151; font-size: 12px; text-transform: uppercase; }
+    tr:hover { background: #f9fafb; }
+
+    /* Filter */
+    .filters { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+    .filters input, .filters select {
+      padding: 6px 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .filters input { flex: 1; min-width: 200px; }
+
+    /* Badge status */
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+    .badge-lulus           { background: #dcfce7; color: #166534; }
+    .badge-tidak-lulus     { background: #fee2e2; color: #991b1b; }
+    .badge-sedang-berjalan { background: #fef3c7; color: #92400e; }
+
+    /* Loading & empty state */
+    .loading, .empty {
+      padding: 32px;
+      text-align: center;
+      color: #6b7280;
+    }
+
+    /* Footer */
+    .footer { color: #9ca3af; font-size: 12px; text-align: center; margin-top: 32px; }
+  </style>
+</head>
+<body>
+  <h1>Dashboard Pelatihan</h1>
+  <p class="subtitle">Data peserta & program lembaga pelatihan</p>
+
+  <div id="loading" class="loading">Memuat data...</div>
+
+  <div id="content" style="display: none;">
+    <!-- Statistik ringkasan -->
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-label">Total Peserta</div>
+        <div class="stat-value" id="stat-total">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Lulus</div>
+        <div class="stat-value" id="stat-lulus">0</div>
+        <div class="stat-sub" id="stat-lulus-pct">-</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Sedang Berjalan</div>
+        <div class="stat-value" id="stat-berjalan">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Rata-rata Nilai</div>
+        <div class="stat-value" id="stat-rata">-</div>
+      </div>
+    </div>
+
+    <!-- Tabel Program -->
+    <div class="card">
+      <div class="card-title">
+        <span>Daftar Program</span>
+        <button onclick="muatData()" style="padding: 4px 12px; background: #1e40af; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">⟳ Refresh</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Kode</th>
+            <th>Nama Program</th>
+            <th>Kapasitas</th>
+            <th>Terisi</th>
+            <th>Tanggal Mulai</th>
+            <th>Lokasi</th>
+            <th>Biaya</th>
+          </tr>
+        </thead>
+        <tbody id="tbl-program"></tbody>
+      </table>
+    </div>
+
+    <!-- Tabel Peserta dengan filter -->
+    <div class="card">
+      <div class="card-title">
+        <span>Daftar Peserta</span>
+        <span id="count-peserta" style="font-size: 12px; font-weight: normal; color: #6b7280;"></span>
+      </div>
+
+      <div class="filters">
+        <input id="filter-search" type="text" placeholder="Cari nama / instansi / ID...">
+        <select id="filter-program">
+          <option value="">Semua Program</option>
+        </select>
+        <select id="filter-status">
+          <option value="">Semua Status</option>
+          <option>Lulus</option>
+          <option>Sedang Berjalan</option>
+          <option>Tidak Lulus</option>
+        </select>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nama</th>
+            <th>Instansi</th>
+            <th>Program</th>
+            <th>Nilai</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="tbl-peserta"></tbody>
+      </table>
+    </div>
+
+    <p class="footer">Terakhir diperbarui: <span id="updated-at">-</span></p>
+  </div>
+
+  <script>
+    // State global — simpan data dari server biar bisa di-filter di client
+    let semuaPeserta = [];
+    let semuaProgram = [];
+
+    // Saat halaman dibuka → muat data
+    document.addEventListener("DOMContentLoaded", muatData);
+
+    // Filter input listeners (client-side, tanpa panggil server lagi)
+    document.getElementById("filter-search").addEventListener("input", renderPeserta);
+    document.getElementById("filter-program").addEventListener("change", renderPeserta);
+    document.getElementById("filter-status").addEventListener("change", renderPeserta);
+
+    function muatData() {
+      document.getElementById("loading").style.display = "block";
+      document.getElementById("content").style.display = "none";
+
+      google.script.run
+        .withSuccessHandler(onDataMuat)
+        .withFailureHandler((err) => {
+          document.getElementById("loading").innerText = "Error: " + err.message;
+        })
+        .bacaDataDashboard();
+    }
+
+    function onDataMuat(data) {
+      semuaPeserta = data.peserta || [];
+      semuaProgram = data.program || [];
+
+      // Render statistik
+      document.getElementById("stat-total").innerText = data.statistik.total;
+      document.getElementById("stat-lulus").innerText = data.statistik.lulus;
+      document.getElementById("stat-lulus-pct").innerText =
+        data.statistik.total > 0
+          ? Math.round(data.statistik.lulus / data.statistik.total * 100) + "% dari total"
+          : "";
+      document.getElementById("stat-berjalan").innerText = data.statistik.sedangBerjalan;
+      document.getElementById("stat-rata").innerText =
+        data.statistik.rataNilai != null ? data.statistik.rataNilai.toFixed(1) : "-";
+
+      // Render tabel program
+      renderProgram();
+
+      // Isi dropdown filter program
+      const sel = document.getElementById("filter-program");
+      sel.innerHTML = '<option value="">Semua Program</option>';
+      semuaProgram.forEach((p) => {
+        const opt = document.createElement("option");
+        opt.value = p.kode;
+        opt.textContent = `${p.kode} — ${p.nama}`;
+        sel.appendChild(opt);
+      });
+
+      // Render tabel peserta
+      renderPeserta();
+
+      // Update timestamp & tampilkan content
+      document.getElementById("updated-at").innerText = new Date().toLocaleString("id-ID");
+      document.getElementById("loading").style.display = "none";
+      document.getElementById("content").style.display = "block";
+    }
+
+    function renderProgram() {
+      const tbody = document.getElementById("tbl-program");
+
+      // Hitung jumlah peserta per program (terisi)
+      const terisiByKode = {};
+      semuaPeserta.forEach((p) => {
+        terisiByKode[p.program] = (terisiByKode[p.program] || 0) + 1;
+      });
+
+      if (semuaProgram.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty">Belum ada program.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = semuaProgram.map((p) => `
+        <tr>
+          <td><strong>${p.kode}</strong></td>
+          <td>${p.nama}</td>
+          <td>${p.kapasitas}</td>
+          <td>${terisiByKode[p.kode] || 0}</td>
+          <td>${p.tanggalMulai}</td>
+          <td>${p.lokasi}</td>
+          <td>Rp ${Number(p.biaya).toLocaleString("id-ID")}</td>
+        </tr>
+      `).join("");
+    }
+
+    function renderPeserta() {
+      const search   = document.getElementById("filter-search").value.toLowerCase().trim();
+      const progSel  = document.getElementById("filter-program").value;
+      const statSel  = document.getElementById("filter-status").value;
+
+      const hasil = semuaPeserta.filter((p) => {
+        if (progSel && p.program !== progSel) return false;
+        if (statSel && p.status !== statSel) return false;
+        if (search) {
+          const teks = `${p.id} ${p.nama} ${p.instansi}`.toLowerCase();
+          if (!teks.includes(search)) return false;
+        }
+        return true;
+      });
+
+      document.getElementById("count-peserta").innerText =
+        `${hasil.length} dari ${semuaPeserta.length} peserta`;
+
+      const tbody = document.getElementById("tbl-peserta");
+      if (hasil.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty">Tidak ada peserta yang cocok.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = hasil.map((p) => {
+        const badgeClass = "badge-" + (p.status || "").toLowerCase().replace(/\s+/g, "-");
+        return `
+          <tr>
+            <td><strong>${p.id}</strong></td>
+            <td>${p.nama}</td>
+            <td>${p.instansi}</td>
+            <td>${p.program}</td>
+            <td>${p.nilai || "-"}</td>
+            <td>${p.status ? `<span class="badge ${badgeClass}">${p.status}</span>` : ""}</td>
+          </tr>
+        `;
+      }).join("");
+    }
+  </script>
+</body>
+</html>
