@@ -55,12 +55,16 @@ flowchart TD
 
 Custom menu adalah **pintu masuk utama** untuk user akhir memakai automation kita. Dia muncul di toolbar Sheet (sebelah menu Help) saat Sheet dibuka — dan setiap item bisa men-trigger function manapun di project.
 
-#### Contoh lengkap (versi M5)
+#### Contoh lengkap (dua gaya menu dalam satu `onOpen`)
+
+Di project yang sama, hanya boleh ada **satu function bernama `onOpen`**. Tapi di dalam satu `onOpen` itu Anda bisa bikin **lebih dari satu menu** — masing-masing punya gaya berbeda. Contoh di bawah membuat dua menu sekaligus: satu **versi flat** (semua item di satu level), satu **versi bertingkat** (pakai sub-menu).
 
 ```javascript
 function onOpen() {
-  SpreadsheetApp.getUi()
-    .createMenu("Menu Pelatihan")                              // 1. Bikin menu utama
+  const ui = SpreadsheetApp.getUi();
+
+  // ---- Menu 1: versi FLAT (semua item di satu level) ----
+  ui.createMenu("Menu Pelatihan")                                 // 1. Bikin menu utama
     .addItem("Tambah peserta cepat (prompt)", "tambahPesertaCepat") // 2. Item → function
     .addItem("Konfirmasi hapus (alert)",      "konfirmasiHapus")
     .addSeparator()                                                 // 3. Garis pemisah
@@ -69,21 +73,44 @@ function onOpen() {
     .addItem("CRUD Peserta",                  "bukaSidebarCRUD")
     .addItem("Import Peserta dari Excel",     "bukaUpload")
     .addToUi();                                                     // 4. Finalize → tampil di toolbar
+
+  // ---- Menu 2: versi BERTINGKAT (sub-menu) ----
+  const submenuPeserta = ui.createMenu("Peserta")
+    .addItem("Tambah cepat", "tambahPesertaCepat")
+    .addItem("Buka CRUD",    "bukaSidebarCRUD");
+
+  const submenuProgram = ui.createMenu("Program")
+    .addItem("Form tambah program", "bukaModalProgram")
+    .addItem("Lihat semua program", "tampilSemuaProgram");
+
+  ui.createMenu("Admin Pelatihan")
+    .addSubMenu(submenuPeserta)
+    .addSubMenu(submenuProgram)
+    .addSeparator()
+    .addItem("Import Excel", "bukaUpload")
+    .addToUi();
 }
 ```
 
-Hasil di toolbar Sheet (setelah reload):
+Hasil di toolbar Sheet (setelah reload — keduanya muncul side-by-side):
 
 ```
-[File] [Edit] [View] ... [Help] [Menu Pelatihan ▾]
-                                  ├─ Tambah peserta cepat (prompt)
-                                  ├─ Konfirmasi hapus (alert)
-                                  ├──────────────────────
-                                  ├─ Form Peserta (sidebar)
-                                  ├─ Form Program (modal)
-                                  ├─ CRUD Peserta
-                                  └─ Import Peserta dari Excel
+[File] [Edit] ... [Help] [Menu Pelatihan ▾] [Admin Pelatihan ▾]
+                          │                  │
+                          │ FLAT             │ BERTINGKAT
+                          ├─ Tambah peserta  ├─ Peserta ▸
+                          ├─ Konfirmasi      │           ├─ Tambah cepat
+                          ├──────────────    │           └─ Buka CRUD
+                          ├─ Form Peserta    ├─ Program ▸
+                          ├─ Form Program    │           ├─ Form tambah program
+                          ├─ CRUD Peserta    │           └─ Lihat semua program
+                          └─ Import Excel    ├──────────────
+                                             └─ Import Excel
 ```
+
+> **Kapan pakai mana?**
+> - **Flat** lebih praktis untuk menu dengan ≤ 5–6 item. User langsung lihat semua aksi.
+> - **Bertingkat** lebih rapi kalau ada banyak aksi yang bisa di-grup secara logis (Peserta, Program, Laporan, dll).
 
 #### Anatomi method-by-method
 
@@ -93,44 +120,8 @@ Hasil di toolbar Sheet (setelah reload):
 | **`.createMenu(label)`** | Bikin menu builder dengan label yang akan tampil di toolbar. |
 | **`.addItem(label, functionName)`** | Tambah baris menu. `functionName` adalah **string nama function** di project yang sama. Saat user klik → function dipanggil. |
 | **`.addSeparator()`** | Garis pembatas — group item secara visual. Tidak bisa diklik. |
-| **`.addSubMenu(menu)`** | Tambah sub-menu (menu di dalam menu). Argumennya `Menu` object lain. Akan tampil dengan tanda ▸ di kanan. |
-| **`.addToUi()`** | Finalize — tanpa ini, menu **tidak akan tampil**. Wajib di akhir chain. |
-
-#### Sub-menu (nested)
-
-```javascript
-function onOpen() {
-  const ui = SpreadsheetApp.getUi();
-
-  const submenuPeserta = ui.createMenu("Peserta")
-    .addItem("Tambah cepat",   "tambahPesertaCepat")
-    .addItem("Buka CRUD",      "bukaSidebarCRUD");
-
-  const submenuProgram = ui.createMenu("Program")
-    .addItem("Form tambah program", "bukaModalProgram")
-    .addItem("Lihat semua program", "tampilSemuaProgram");
-
-  ui.createMenu("Menu Pelatihan")
-    .addSubMenu(submenuPeserta)
-    .addSubMenu(submenuProgram)
-    .addSeparator()
-    .addItem("Import Excel", "bukaUpload")
-    .addToUi();
-}
-```
-
-Hasilnya:
-```
-Menu Pelatihan ▾
-├─ Peserta ▸
-│               ├─ Tambah cepat
-│               └─ Buka CRUD
-├─ Program ▸
-│               ├─ Form tambah program
-│               └─ Lihat semua program
-├──────────────
-└─ Import Excel
-```
+| **`.addSubMenu(menu)`** | Tambah sub-menu (menu di dalam menu). Argumennya `Menu` object lain (hasil `createMenu(...).addItem(...)` tanpa `.addToUi()`). Akan tampil dengan tanda ▸ di kanan. |
+| **`.addToUi()`** | Finalize — tanpa ini, menu **tidak akan tampil**. Wajib di akhir chain. Boleh dipanggil **lebih dari sekali** dalam satu `onOpen` untuk bikin beberapa menu. |
 
 #### Aturan penting `onOpen`
 
