@@ -200,24 +200,21 @@ function tambahPesertaCepat() {
   if (!program) return;
 
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Peserta");
-  const idBaru = _generateIdPeserta(sheet);
+
+  // Generate ID sederhana: pakai jumlah baris data sekarang + 1.
+  // Header di row 1, jadi getLastRow() = jumlah data + 1 → otomatis = nomor ID baru.
+  // Format jadi 3 digit: 1 → "001", 12 → "012", 123 → "123".
+  const nomor = sheet.getLastRow();              // mis. 8 (header + 7 peserta)
+  const idBaru = `PST-${String(nomor).padStart(3, "0")}`;   // "PST-008"
 
   // [ID Peserta, Tanggal Daftar, Nama, Email, Instansi, Program]
   sheet.appendRow([idBaru, new Date(), nama, email, instansi, program]);
 
   ui.alert("Berhasil", `Peserta ${idBaru} (${nama}) tersimpan.`, ui.ButtonSet.OK);
 }
-
-/** Generate ID urut dari ID terakhir di Sheet. Format: PST-001, PST-002, ... */
-function _generateIdPeserta(sheet) {
-  const ids = sheet.getRange(2, 1, Math.max(1, sheet.getLastRow() - 1), 1)
-    .getValues().flat().filter(Boolean);
-  const angkaTertinggi = ids
-    .map((id) => parseInt(String(id).replace(/\D/g, ""), 10) || 0)
-    .reduce((a, b) => Math.max(a, b), 0);
-  return `PST-${String(angkaTertinggi + 1).padStart(3, "0")}`;
-}
 ```
+
+> **Catatan**: pola `getLastRow()` ini sederhana tapi **assume row tidak pernah dihapus di tengah**. Kalau peserta dihapus, nomor ID bisa tabrakan dengan yang sudah ada. Untuk kebutuhan demo/training ini cukup; di production sebaiknya generate ID dari "ID terakhir di Sheet + 1" supaya tetap unik walau ada baris yang dihapus.
 
 **Cara kerjanya** dari sisi user:
 
@@ -286,7 +283,9 @@ function bukaSidebarPeserta() {
 // Function ini dipanggil dari client (HTML) via google.script.run
 function simpanPeserta(formData) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Peserta");
-  const idBaru = _generateIdPeserta(sheet);
+
+  // Generate ID sederhana — sama seperti versi prompt (§2.2)
+  const idBaru = `PST-${String(sheet.getLastRow()).padStart(3, "0")}`;
 
   // Form hanya mengisi 6 kolom pertama.
   // Kolom Nilai & Status di-handle proses lain (default Sheet: kosong).
@@ -752,7 +751,7 @@ function simpanPeserta(formData) {
   if (semuaEmail.includes(formData.email)) {
     throw new Error(`Email ${formData.email} sudah terdaftar.`);
   }
-  // ... lanjut simpan via _generateIdPeserta + appendRow
+  // ... lanjut generate ID + appendRow
 }
 ```
 
