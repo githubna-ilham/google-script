@@ -2,6 +2,20 @@
 
 Sampai Modul 4, semua interaksi dengan kode lewat **Run** di editor atau trigger otomatis. Modul 5 mengenalkan **antarmuka untuk pengguna akhir**: dialog, sidebar, dan custom form HTML yang berjalan di dalam Google Sheets/Docs.
 
+> 🧩 **Studi kasus berkelanjutan dari Modul 3**: data peserta & program lembaga pelatihan yang Anda olah di Modul 3 (tab `Peserta`, `Program`) sekarang akan diberi **antarmuka admin**. Bayangkan admin lembaga yang tidak menulis kode — mereka tetap perlu cara untuk tambah peserta baru, daftarkan ke program, ubah status, lihat daftar, dll. Itulah yang dibangun di modul ini.
+
+### Struktur data yang dipakai di seluruh contoh modul ini
+
+**Tab `Peserta`** (8 kolom):
+
+| ID Peserta | Tanggal Daftar | Nama | Email | Instansi | Program | Nilai | Status |
+
+**Tab `Program`** (7 kolom):
+
+| Kode | Nama Program | Kapasitas | Biaya | Tanggal Mulai | Tanggal Selesai | Lokasi |
+
+Persis sama dengan Modul 3 — Anda bisa pakai Sheet `Latihan-M3` yang sudah ada (atau bikin baru `Latihan-M5` dengan struktur sama).
+
 ---
 
 ## 1. Pilihan UI di Apps Script
@@ -46,29 +60,29 @@ Custom menu adalah **pintu masuk utama** untuk user akhir memakai automation kit
 ```javascript
 function onOpen() {
   SpreadsheetApp.getUi()
-    .createMenu("⚡ Form M5")                                    // 1. Bikin menu utama
-    .addItem("Tambah cepat (prompt)",    "tambahKaryawanCepat")   // 2. Item → function
-    .addItem("Konfirmasi hapus (alert)", "konfirmasiHapus")
-    .addSeparator()                                               // 3. Garis pemisah
-    .addItem("Buka Form (sidebar)",      "bukaSidebarForm")
-    .addItem("Buka Form (modal)",        "bukaModalForm")
-    .addItem("Buka Sidebar CRUD",        "bukaSidebarCRUD")
-    .addItem("Import Excel",             "bukaUpload")
-    .addToUi();                                                   // 4. Finalize → tampil di toolbar
+    .createMenu("⚡ Admin Pelatihan")                              // 1. Bikin menu utama
+    .addItem("Tambah peserta cepat (prompt)", "tambahPesertaCepat") // 2. Item → function
+    .addItem("Konfirmasi hapus (alert)",      "konfirmasiHapus")
+    .addSeparator()                                                 // 3. Garis pemisah
+    .addItem("Form Peserta (sidebar)",        "bukaSidebarPeserta")
+    .addItem("Form Program (modal)",          "bukaModalProgram")
+    .addItem("CRUD Peserta",                  "bukaSidebarCRUD")
+    .addItem("Import Peserta dari Excel",     "bukaUpload")
+    .addToUi();                                                     // 4. Finalize → tampil di toolbar
 }
 ```
 
 Hasil di toolbar Sheet (setelah reload):
 
 ```
-[File] [Edit] [View] ... [Help] [⚡ Form M5 ▾]
-                                  ├─ Tambah cepat (prompt)
+[File] [Edit] [View] ... [Help] [⚡ Admin Pelatihan ▾]
+                                  ├─ Tambah peserta cepat (prompt)
                                   ├─ Konfirmasi hapus (alert)
                                   ├──────────────────────
-                                  ├─ Buka Form (sidebar)
-                                  ├─ Buka Form (modal)
-                                  ├─ Buka Sidebar CRUD
-                                  └─ Import Excel
+                                  ├─ Form Peserta (sidebar)
+                                  ├─ Form Program (modal)
+                                  ├─ CRUD Peserta
+                                  └─ Import Peserta dari Excel
 ```
 
 #### Anatomi method-by-method
@@ -88,26 +102,34 @@ Hasil di toolbar Sheet (setelah reload):
 function onOpen() {
   const ui = SpreadsheetApp.getUi();
 
-  const submenuTools = ui.createMenu("🛠️ Tools")
-    .addItem("Reset format",  "resetFormat")
-    .addItem("Hapus chart",   "hapusChart");
+  const submenuPeserta = ui.createMenu("👥 Peserta")
+    .addItem("Tambah cepat",   "tambahPesertaCepat")
+    .addItem("Buka CRUD",      "bukaSidebarCRUD");
 
-  ui.createMenu("⚡ Form M5")
-    .addItem("Tambah cepat", "tambahKaryawanCepat")
+  const submenuProgram = ui.createMenu("📚 Program")
+    .addItem("Form tambah program", "bukaModalProgram")
+    .addItem("Lihat semua program", "tampilSemuaProgram");
+
+  ui.createMenu("⚡ Admin Pelatihan")
+    .addSubMenu(submenuPeserta)
+    .addSubMenu(submenuProgram)
     .addSeparator()
-    .addSubMenu(submenuTools)
+    .addItem("Import Excel", "bukaUpload")
     .addToUi();
 }
 ```
 
 Hasilnya:
 ```
-⚡ Form M5 ▾
-├─ Tambah cepat
+⚡ Admin Pelatihan ▾
+├─ 👥 Peserta ▸
+│               ├─ Tambah cepat
+│               └─ Buka CRUD
+├─ 📚 Program ▸
+│               ├─ Form tambah program
+│               └─ Lihat semua program
 ├──────────────
-└─ 🛠️ Tools ▸
-              ├─ Reset format
-              └─ Hapus chart
+└─ Import Excel
 ```
 
 #### Aturan penting `onOpen`
@@ -162,13 +184,13 @@ function konfirmasiHapus() {
   const ui = SpreadsheetApp.getUi();
   const respon = ui.alert(
     "Konfirmasi",
-    "Yakin mau menghapus baris terpilih?",
+    "Yakin mau menghapus baris peserta terpilih?",
     ui.ButtonSet.YES_NO
   );
 
   if (respon === ui.Button.YES) {
     // ... eksekusi hapus
-    ui.alert("Berhasil", "Baris dihapus.", ui.ButtonSet.OK);
+    ui.alert("Berhasil", "Baris peserta dihapus.", ui.ButtonSet.OK);
   }
 }
 ```
@@ -176,20 +198,34 @@ function konfirmasiHapus() {
 ### 2.3 Prompt — input dari user
 
 ```javascript
-function tambahKaryawanCepat() {
+function tambahPesertaCepat() {
   const ui = SpreadsheetApp.getUi();
   const respon = ui.prompt(
-    "Tambah Karyawan",
-    "Masukkan nama:",
+    "Tambah Peserta",
+    "Masukkan nama peserta:",
     ui.ButtonSet.OK_CANCEL
   );
 
   if (respon.getSelectedButton() === ui.Button.OK) {
     const nama = respon.getResponseText().trim();
-    if (nama) {
-      SpreadsheetApp.getActiveSheet().appendRow([nama, "", "", new Date()]);
-    }
+    if (!nama) return;
+
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Peserta");
+    const idBaru = _generateIdPeserta(sheet);
+
+    // [ID Peserta, Tanggal Daftar, Nama, Email, Instansi, Program, Nilai, Status]
+    sheet.appendRow([idBaru, new Date(), nama, "", "", "", "", "Sedang Berjalan"]);
   }
+}
+
+/** Generate ID urut dari ID terakhir di Sheet. Format: PST-001, PST-002, ... */
+function _generateIdPeserta(sheet) {
+  const ids = sheet.getRange(2, 1, Math.max(1, sheet.getLastRow() - 1), 1)
+    .getValues().flat().filter(Boolean);
+  const angkaTertinggi = ids
+    .map((id) => parseInt(String(id).replace(/\D/g, ""), 10) || 0)
+    .reduce((a, b) => Math.max(a, b), 0);
+  return `PST-${String(angkaTertinggi + 1).padStart(3, "0")}`;
 }
 ```
 
@@ -212,35 +248,42 @@ project Apps Script/
 // Code.gs
 function onOpen() {
   SpreadsheetApp.getUi()
-    .createMenu("⚡ Form")
-    .addItem("Buka form", "bukaSidebar")
+    .createMenu("⚡ Admin Pelatihan")
+    .addItem("Form Peserta", "bukaSidebarPeserta")
     .addToUi();
 }
 
-function bukaSidebar() {
-  const html = HtmlService.createHtmlOutputFromFile("ui-form")
-    .setTitle("Tambah Data")
-    .setWidth(300);
+function bukaSidebarPeserta() {
+  const html = HtmlService.createHtmlOutputFromFile("ui-form-peserta")
+    .setTitle("Tambah Peserta")
+    .setWidth(320);
   SpreadsheetApp.getUi().showSidebar(html);
 }
 
 // Function ini dipanggil dari client (HTML) via google.script.run
-function simpanData(formData) {
-  const sheet = SpreadsheetApp.getActiveSheet();
+function simpanPeserta(formData) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Peserta");
+  const idBaru = _generateIdPeserta(sheet);
+
   sheet.appendRow([
+    idBaru,
+    new Date(),
     formData.nama,
-    formData.divisi,
-    parseFloat(formData.gaji) || 0,
-    new Date()
+    formData.email,
+    formData.instansi,
+    formData.program,
+    "",                  // Nilai — kosong sampai pelatihan selesai
+    "Sedang Berjalan"
   ]);
-  return { ok: true, message: "Data tersimpan." };
+
+  return { ok: true, message: `Peserta ${idBaru} tersimpan.`, idBaru };
 }
 ```
 
 ### 3.3 Client side: HTML form
 
 ```html
-<!-- ui-form.html -->
+<!-- ui-form-peserta.html -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -256,21 +299,23 @@ function simpanData(formData) {
   </style>
 </head>
 <body>
-  <h3>Tambah Karyawan</h3>
+  <h3>Tambah Peserta</h3>
 
   <label>Nama</label>
   <input id="nama" type="text" required>
 
-  <label>Divisi</label>
-  <select id="divisi">
-    <option>Finance</option>
-    <option>Marketing</option>
-    <option>IT</option>
-    <option>HR</option>
-  </select>
+  <label>Email</label>
+  <input id="email" type="email" required>
 
-  <label>Gaji (Rp)</label>
-  <input id="gaji" type="number" min="0" step="100000">
+  <label>Instansi</label>
+  <input id="instansi" type="text" required>
+
+  <label>Program</label>
+  <select id="program">
+    <option value="GAS-101">GAS-101 — Google Apps Script Fundamental</option>
+    <option value="GAS-201">GAS-201 — Sheets & Gmail Automation</option>
+    <option value="GAS-301">GAS-301 — Web Apps & API Integration</option>
+  </select>
 
   <button onclick="kirim()">Simpan</button>
   <div id="status"></div>
@@ -278,13 +323,14 @@ function simpanData(formData) {
   <script>
     function kirim() {
       const data = {
-        nama:   document.getElementById("nama").value.trim(),
-        divisi: document.getElementById("divisi").value,
-        gaji:   document.getElementById("gaji").value
+        nama:     document.getElementById("nama").value.trim(),
+        email:    document.getElementById("email").value.trim(),
+        instansi: document.getElementById("instansi").value.trim(),
+        program:  document.getElementById("program").value
       };
 
-      if (!data.nama) {
-        tampilStatus("Nama wajib diisi.", "error");
+      if (!data.nama || !data.email || !data.instansi) {
+        tampilStatus("Semua field wajib diisi.", "error");
         return;
       }
 
@@ -294,12 +340,13 @@ function simpanData(formData) {
         .withSuccessHandler((resp) => {
           tampilStatus(resp.message, "ok");
           document.getElementById("nama").value = "";
-          document.getElementById("gaji").value = "";
+          document.getElementById("email").value = "";
+          document.getElementById("instansi").value = "";
         })
         .withFailureHandler((err) => {
           tampilStatus("Error: " + err.message, "error");
         })
-        .simpanData(data);
+        .simpanPeserta(data);
     }
 
     function tampilStatus(msg, cls) {
@@ -319,11 +366,11 @@ sequenceDiagram
     participant H as HTML (browser)
     participant S as Server (.gs)
     participant Sheet as Google Sheet
-    H->>S: google.script.run.simpanData(formData)
-    S->>Sheet: appendRow(...)
+    H->>S: google.script.run.simpanPeserta(formData)
+    S->>Sheet: appendRow ke tab Peserta
     Sheet-->>S: row added
-    S-->>H: return { ok: true, message }
-    H->>H: tampil status di DOM
+    S-->>H: return { ok: true, message, idBaru }
+    H->>H: tampil status & reset form
 ```
 
 **Aturan penting `google.script.run`**:
@@ -343,12 +390,12 @@ sequenceDiagram
 | Lebar | `.setWidth(300)` (tetap) | `.setWidth(W).setHeight(H)` |
 
 ```javascript
-// Modal
-function bukaModal() {
-  const html = HtmlService.createHtmlOutputFromFile("ui-modal")
+// Modal — contoh: wizard tambah program pelatihan
+function bukaModalProgram() {
+  const html = HtmlService.createHtmlOutputFromFile("ui-modal-program")
     .setWidth(500)
     .setHeight(400);
-  SpreadsheetApp.getUi().showModalDialog(html, "Wizard Onboarding");
+  SpreadsheetApp.getUi().showModalDialog(html, "Tambah Program Pelatihan");
 }
 ```
 
@@ -358,22 +405,34 @@ function bukaModal() {
 
 Form sering perlu data awal: list pilihan dropdown dari sheet, default value, dll. Pakai **template HTML** seperti di Modul 4.
 
-```javascript
-function bukaFormDenganData() {
-  const tmpl = HtmlService.createTemplateFromFile("ui-form-prefill");
-  tmpl.divisiList = ["Finance", "Marketing", "IT", "HR"];   // dari Sheet
-  tmpl.userEmail  = Session.getActiveUser().getEmail();
+Contoh kasus: dropdown **Program** di form peserta jangan hardcoded — ambil dari tab `Program` di Sheet. Kalau admin tambah program baru, dropdown otomatis ikut update tanpa perlu ubah kode.
 
-  const html = tmpl.evaluate().setTitle("Form Pre-fill").setWidth(320);
+```javascript
+function bukaFormPesertaDinamis() {
+  const tmpl = HtmlService.createTemplateFromFile("ui-form-peserta-prefill");
+  tmpl.programList = _ambilDaftarProgram();                 // dari tab Program
+  tmpl.userEmail   = Session.getActiveUser().getEmail();
+
+  const html = tmpl.evaluate().setTitle("Tambah Peserta").setWidth(320);
   SpreadsheetApp.getUi().showSidebar(html);
+}
+
+function _ambilDaftarProgram() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Program");
+  const data  = sheet.getDataRange().getValues();
+  const headers = data.shift();
+  const cKode  = headers.indexOf("Kode");
+  const cNama  = headers.indexOf("Nama Program");
+  return data.map((r) => ({ kode: r[cKode], nama: r[cNama] }));
 }
 ```
 
 ```html
-<!-- ui-form-prefill.html (potongan) -->
-<select id="divisi">
-  <? divisiList.forEach((d) => { ?>
-    <option><?= d ?></option>
+<!-- ui-form-peserta-prefill.html (potongan) -->
+<label>Program</label>
+<select id="program">
+  <? programList.forEach((p) => { ?>
+    <option value="<?= p.kode ?>"><?= p.kode ?> — <?= p.nama ?></option>
   <? }); ?>
 </select>
 
@@ -384,7 +443,7 @@ function bukaFormDenganData() {
 
 ## 6. Edit & Delete Record dari UI
 
-Pola CRUD lengkap — list data di sidebar, klik baris untuk edit, tombol delete.
+Pola CRUD lengkap untuk tab `Peserta` — list semua peserta di sidebar, klik baris untuk edit (ubah Nilai, Status, dll), tombol delete untuk hapus baris.
 
 ```mermaid
 flowchart TD
@@ -409,7 +468,7 @@ Implementasi lengkap di `contoh.js` (function `bukaSidebarCRUD`).
 
 ## 7. Upload File Excel untuk Input Data
 
-Use case nyata yang sering dibutuhkan: user **upload file Excel (.xlsx)**, sistem parse, lalu insert ribuan baris ke Sheet sekaligus. Lebih cepat daripada input manual baris per baris.
+Use case nyata di lembaga pelatihan: admin terima file Excel daftar peserta dari klien/instansi (ratusan baris), lalu perlu **import sekaligus** ke tab `Peserta` — daripada copy-paste manual baris per baris.
 
 ```mermaid
 flowchart LR
@@ -507,15 +566,15 @@ function importExcel(base64, fileName, mimeType) {
     const headers = data[0];
     const rows    = data.slice(1);
 
-    // 4. Validasi header
-    const expectedHeaders = ["Nama", "Divisi", "Gaji"];
+    // 4. Validasi header (minimum) — kolom wajib di file Excel admin
+    const expectedHeaders = ["Nama", "Email", "Instansi", "Program"];
     const missing = expectedHeaders.filter((h) => !headers.includes(h));
     if (missing.length > 0) {
       throw new Error(`Kolom hilang: ${missing.join(", ")}`);
     }
 
-    // 5. Insert ke Sheet tujuan (1 round-trip)
-    const target = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Karyawan");
+    // 5. Insert ke tab Peserta (1 round-trip)
+    const target = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Peserta");
     const startRow = target.getLastRow() + 1;
     target.getRange(startRow, 1, rows.length, headers.length).setValues(rows);
 
@@ -566,7 +625,7 @@ function confirmImport(tempId) {
     const headers = data[0];
     const rows    = data.slice(1);
 
-    const target = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Karyawan");
+    const target = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Peserta");
     const startRow = target.getLastRow() + 1;
     target.getRange(startRow, 1, rows.length, headers.length).setValues(rows);
 
@@ -644,21 +703,33 @@ function renderTabel(r) {
 **Validasi rangkap**: di client untuk UX cepat, di server untuk integritas data (jangan percaya client).
 
 ```javascript
-// Client (HTML <script>)
-if (data.gaji < 0 || isNaN(data.gaji)) {
-  tampilStatus("Gaji harus angka positif.", "error");
+// Client (HTML <script>) — feedback cepat sebelum kirim ke server
+if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) {
+  tampilStatus("Format email tidak valid.", "error");
   return;
 }
 
-// Server (.gs)
-function simpanData(formData) {
-  if (!formData.nama || formData.nama.length < 2) {
-    throw new Error("Nama minimal 2 karakter.");
+// Server (.gs) — wajib re-validate, jangan percaya client
+function simpanPeserta(formData) {
+  if (!formData.nama || formData.nama.length < 3) {
+    throw new Error("Nama minimal 3 karakter.");
   }
-  if (typeof formData.gaji !== "number" || formData.gaji < 0) {
-    throw new Error("Gaji tidak valid.");
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email || "")) {
+    throw new Error("Format email tidak valid.");
   }
-  // ... lanjut simpan
+  // Cek Program harus exist di tab Program (lookup)
+  const programValid = _ambilDaftarProgram().some((p) => p.kode === formData.program);
+  if (!programValid) {
+    throw new Error(`Program "${formData.program}" tidak terdaftar.`);
+  }
+  // Cek email duplikat
+  const semuaEmail = SpreadsheetApp.getActiveSpreadsheet()
+    .getSheetByName("Peserta").getDataRange().getValues()
+    .slice(1).map((r) => r[3]);   // kolom Email (index 3)
+  if (semuaEmail.includes(formData.email)) {
+    throw new Error(`Email ${formData.email} sudah terdaftar.`);
+  }
+  // ... lanjut simpan via _generateIdPeserta + appendRow
 }
 ```
 

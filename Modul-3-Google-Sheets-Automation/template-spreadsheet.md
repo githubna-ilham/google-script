@@ -75,7 +75,7 @@ Latihan Modul 3 menggunakan konteks **lembaga pelatihan**: data peserta + data p
 **Format kolom**:
 - `Tanggal Daftar`: Format → Number → Date (yyyy-mm-dd).
 - `Nilai`: Number biasa (0–100); biarkan kosong untuk peserta yang belum dinilai.
-- `Email`: minimal **2 baris** harus email Anda sendiri — supaya email sertifikat (Soal 1) & undangan Calendar (Soal 3) bisa diverifikasi tanpa spam orang lain.
+- `Email`: minimal **2 baris** harus email Anda sendiri — supaya undangan Calendar (Soal 1) & email sertifikat (Soal 3) bisa diverifikasi tanpa spam orang lain.
 - `Notif Email`, `Link Sertifikat`: kosongkan — diisi otomatis oleh script.
 
 ### Tab `Program`
@@ -89,9 +89,9 @@ Latihan Modul 3 menggunakan konteks **lembaga pelatihan**: data peserta + data p
 | GAS-501 | Capstone & Mentoring            | 10        | 5000000  | 2026-06-29    | 2026-07-01      | Online (Meet)   |
 
 **Format kolom**:
-- `Tanggal Mulai`, `Tanggal Selesai`: Format → Number → Date. **Wajib** sebagai Date — Soal 3 cek `instanceof Date` sebelum bikin event.
+- `Tanggal Mulai`, `Tanggal Selesai`: Format → Number → Date. **Wajib** sebagai Date — Soal 1 cek `instanceof Date` sebelum bikin event.
 - `Biaya`: Number biasa.
-- Solusi Soal 3 akan menambah kolom `Event ID` di sebelah `Lokasi` secara otomatis (tidak perlu disiapkan manual).
+- Solusi Soal 1 akan menambah kolom `Event ID` di sebelah `Lokasi` secara otomatis (tidak perlu disiapkan manual).
 
 ---
 
@@ -166,7 +166,7 @@ GAS-501,Capstone & Mentoring,10,5000000,2026-06-29,2026-07-01,Online (Meet)
 A: Boleh pakai yang sudah ada, **asalkan** Anda bikin tab baru dengan nama persis seperti tabel di atas (`Karyawan`, `Pesanan`, `Peserta`, `Program`). Script kita pakai `getSheetByName(...)` jadi nama tab harus match.
 
 **Q: Kenapa email saya yang dipakai untuk customer/peserta?**
-A: Supaya saat script kirim email sertifikat (Soal 1 latihan) atau undangan Calendar (Soal 3 latihan), emailnya masuk ke inbox Anda — bisa langsung diverifikasi tanpa spam orang lain. Di production tinggal ganti pakai email peserta asli.
+A: Supaya saat script kirim undangan Calendar (Soal 1 latihan) atau email sertifikat (Soal 3 latihan), emailnya masuk ke inbox Anda — bisa langsung diverifikasi tanpa spam orang lain. Di production tinggal ganti pakai email peserta asli.
 
 **Q: Bisa pakai container-bound (script di-bind ke Sheet) atau standalone?**
 A: Dua-duanya bisa.
