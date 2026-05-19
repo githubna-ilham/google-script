@@ -82,6 +82,78 @@ MailApp.sendEmail({ to, subject, body: "lihat versi HTML", htmlBody: html });
 
 > **Best practice**: selalu sertakan `body` plain text + `htmlBody`. Beberapa client hanya tampilkan plain.
 
+### 2.4 Menangani Error Pengiriman
+
+Email bisa gagal karena banyak hal: alamat typo, kuota habis, rate limit, network blip. `MailApp.sendEmail()` **akan throw exception** untuk kasus seperti kuota habis, format alamat parah, atau service error — tapi **tidak throw** untuk alamat yang valid formatnya tapi tujuannya tidak ada (itu jadi bounce async ke inbox sender, di luar jangkauan script).
+
+Pola yang aman: **validasi dulu → kirim dengan try/catch → catat hasil per baris**.
+
+```javascript
+function _isEmailValid(s) {
+  return typeof s === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim());
+}
+
+function kirimDenganLogStatus(daftar) {
+  // Cek kuota di awal — fail fast
+  const sisa = MailApp.getRemainingDailyQuota();
+  console.log(`Sisa kuota harian: ${sisa}`);
+  if (sisa < daftar.length) {
+    throw new Error(`Kuota tidak cukup: butuh ${daftar.length}, sisa ${sisa}`);
+  }
+
+  const stamp = Utilities.formatDate(
+    new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm"
+  );
+
+  let sukses = 0, gagal = 0;
+  const hasil = daftar.map((item) => {
+    // 1) Pre-check format
+    if (!_isEmailValid(item.email)) {
+      gagal++;
+      return { ...item, status: `GAGAL: format invalid "${item.email}"` };
+    }
+
+    // 2) Coba kirim — tangkap exception runtime
+    try {
+      MailApp.sendEmail({
+        to: item.email,
+        subject: item.subject,
+        body: item.body
+      });
+      sukses++;
+      return { ...item, status: stamp };
+    } catch (err) {
+      gagal++;
+      return { ...item, status: `GAGAL: ${err.message}` };
+    }
+  });
+
+  console.log(`✓ Sukses: ${sukses}  ✗ Gagal: ${gagal}`);
+  return hasil;   // caller bisa tulis kembali kolom status ke Sheet
+}
+```
+
+**Pola kolom marker multi-purpose** di Sheet:
+
+| Email           | Notif Email                       |
+|-----------------|-----------------------------------|
+| sari@kantor.id  | `2026-05-19 14:23`                | ← sukses → timestamp
+| typo@kantor     | `GAGAL: format invalid "typo@kantor"` | ← gagal pre-check
+| nope@xxx.zz     | `GAGAL: Invalid email address`    | ← gagal runtime
+
+Idempotency tetap jalan: `if (notif) continue;` skip baris yang sudah punya isi (entah sukses atau gagal). Untuk retry baris yang gagal, **kosongkan dulu sel marker-nya manual** lalu run ulang.
+
+#### Hal-hal yang **tidak bisa** dideteksi langsung di script
+
+| Kasus | Deteksi |
+|---|---|
+| Alamat format valid tapi mailbox tidak ada (bounce) | Async — baca inbox `from:mailer-daemon` setelah beberapa menit |
+| Email masuk folder spam penerima | Tidak bisa (di sisi penerima) |
+| Penerima blokir sender | Tidak bisa |
+| Pesan tertunda di queue Gmail | Tidak bisa |
+
+Untuk deteksi bounce, pola production: kirim → time-driven trigger 10–15 menit kemudian → `GmailApp.search("from:mailer-daemon after:...")` → cocokkan dengan baris yang baru dikirim → update statusnya. Bahan baca inbox ada di §5; trigger time-driven dibahas di Modul 6.
+
 ---
 
 ## 3. Pola Template — Gmail HTML dari File
@@ -299,32 +371,7 @@ if (thread) {
 
 ---
 
-## 7. Mini-Project — Auto-Reply dari Sheet "Pengaduan"
-
-Skenario: ada Sheet `Pengaduan` dengan kolom `Email`, `Judul`, `Status`. Setiap baris baru dengan `Status = Baru` harus dibalas otomatis dengan email konfirmasi (HTML, pakai template), lalu `Status` berubah jadi `Auto-Replied`.
-
-```mermaid
-flowchart TD
-    A([Trigger time-driven<br/>tiap 15 menit]) --> B[Baca Sheet Pengaduan]
-    B --> C{Loop tiap baris}
-    C --> D{Status = 'Baru'?}
-    D -->|Tidak| C
-    D -->|Ya| E[Render template HTML<br/>dengan data baris]
-    E --> F[MailApp.sendEmail]
-    F --> G[Update Status<br/>jadi 'Auto-Replied']
-    G --> C
-    C -->|Selesai| H[setValues 1× round-trip]
-    H --> I([Selesai])
-
-    style F fill:#dbeafe,stroke:#3b82f6
-    style E fill:#fef3c7,stroke:#f59e0b
-```
-
-Implementasi lengkap di `contoh.js` (`contoh10_autoReplyPengaduan`).
-
----
-
-## 8. Best Practices
+## 7. Best Practices
 
 1. **Selalu set `htmlBody` + `body`** — jangan hanya HTML.
 2. **Cek quota** sebelum batch besar: `MailApp.getRemainingDailyQuota()`.
@@ -336,7 +383,7 @@ Implementasi lengkap di `contoh.js` (`contoh10_autoReplyPengaduan`).
 
 ---
 
-## 9. Penutup
+## 8. Penutup
 
 **Yang harus dikuasai sebelum lanjut**:
 

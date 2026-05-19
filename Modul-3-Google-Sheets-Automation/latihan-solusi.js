@@ -1,14 +1,14 @@
 /**
  * Modul 3 — Solusi Latihan
  *
- * Tiga latihan integrasi:
- *   Soal 1: Sheets ↔ Gmail   — mail merge sertifikat
- *   Soal 2: Sheets ↔ Docs    — generate Surat Keterangan Lulus
+ * Tiga latihan integrasi (kerjakan berurutan):
+ *   Soal 1: Sheets ↔ Docs    — generate Surat Keterangan Lulus (isi kolom "Link Sertifikat")
+ *   Soal 2: Sheets ↔ Gmail   — kirim email berisi link Doc ke peserta
  *   Soal 3: Sheets ↔ Calendar — jadwal pelatihan + undangan peserta
  *
  * Setup:
  *   - Set SHEET_ID  ke ID Sheet "Latihan-M3".
- *   - Set FOLDER_ID ke ID folder Drive "Latihan-M3-Output" (untuk Soal 2).
+ *   - Set FOLDER_ID ke ID folder Drive "Latihan-M3-Output" (untuk Soal 1).
  *   - Pastikan minimal 1–2 email di tab Peserta adalah email Anda sendiri
  *     supaya bisa verifikasi tanpa spam orang lain.
  */
@@ -47,72 +47,16 @@ function _fmtTanggal(date) {
   return Utilities.formatDate(date, Session.getScriptTimeZone(), "yyyy-MM-dd");
 }
 
-
-/* ===================================================================
- * Soal 1 — Sheets ↔ Gmail: Mail Merge Sertifikat
- * =================================================================== */
-function kirimSertifikatEmail() {
-  const sheet  = _ss().getSheetByName("Peserta");
-  const range  = sheet.getDataRange();
-  const data   = range.getValues();
-  const headers = data[0];
-
-  const cNama    = headers.indexOf("Nama");
-  const cEmail   = headers.indexOf("Email");
-  const cProgKd  = headers.indexOf("Program");
-  const cNilai   = headers.indexOf("Nilai");
-  const cStatus  = headers.indexOf("Status");
-  const cNotif   = headers.indexOf("Notif Email");
-
-  const programMap = _mapProgram();
-  const stamp = Utilities.formatDate(
-    new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm"
-  );
-
-  let terkirim = 0;
-  for (let i = 1; i < data.length; i++) {
-    const status   = data[i][cStatus];
-    const sudahNotif = data[i][cNotif];
-    if (status !== "Lulus" || sudahNotif) continue;
-
-    const nama       = data[i][cNama];
-    const email      = data[i][cEmail];
-    const kodeProg   = data[i][cProgKd];
-    const nilai      = data[i][cNilai];
-    const namaProg   = (programMap[kodeProg] || {})["Nama Program"] || kodeProg;
-
-    MailApp.sendEmail({
-      to: email,
-      subject: `[Sertifikat] ${namaProg} — ${nama}`,
-      body: [
-        `Halo ${nama},`,
-        ``,
-        `Selamat! Anda telah dinyatakan LULUS pada program berikut:`,
-        ``,
-        `Nama Program : ${namaProg}`,
-        `Nilai Akhir  : ${nilai}`,
-        ``,
-        `Sertifikat resmi akan menyusul dalam beberapa hari kerja.`,
-        ``,
-        `Salam,`,
-        `Penyelenggara Pelatihan`
-      ].join("\n")
-    });
-
-    data[i][cNotif] = stamp;
-    terkirim++;
-  }
-
-  // Tulis ulang kolom Notif Email dalam 1 round-trip (untuk seluruh kolom)
-  const kolomNotif = data.map((r) => [r[cNotif]]);
-  sheet.getRange(1, cNotif + 1, kolomNotif.length, 1).setValues(kolomNotif);
-
-  console.log(`${terkirim} email dikirim.`);
+/** Ambil Doc/File ID dari URL Google Docs/Drive. */
+function _extractDocId(url) {
+  const m = String(url).match(/\/d\/([^\/]+)/);
+  if (!m) throw new Error(`URL tidak valid (tidak ada /d/{id}/ di "${url}")`);
+  return m[1];
 }
 
 
 /* ===================================================================
- * Soal 2 — Sheets ↔ Docs: Generate Surat Keterangan Lulus
+ * Soal 1 — Sheets ↔ Docs: Generate Surat Keterangan Lulus
  * =================================================================== */
 function generateSuratKeterangan() {
   if (!FOLDER_ID || FOLDER_ID === "GANTI_DENGAN_ID_FOLDER_OUTPUT") {
@@ -192,6 +136,88 @@ function generateSuratKeterangan() {
   sheet.getRange(1, cLink + 1, kolomLink.length, 1).setValues(kolomLink);
 
   console.log(`${dibuat} Doc dibuat di folder Latihan-M3-Output.`);
+}
+
+
+/* ===================================================================
+ * Soal 2 — Sheets ↔ Gmail: Kirim Sertifikat via Email
+ *
+ * Prasyarat: Soal 1 sudah dijalankan sehingga kolom "Link Sertifikat"
+ * terisi untuk peserta Lulus.
+ * =================================================================== */
+function kirimSertifikatEmail() {
+  const sheet  = _ss().getSheetByName("Peserta");
+  const range  = sheet.getDataRange();
+  const data   = range.getValues();
+  const headers = data[0];
+
+  const cId      = headers.indexOf("ID Peserta");
+  const cNama    = headers.indexOf("Nama");
+  const cEmail   = headers.indexOf("Email");
+  const cProgKd  = headers.indexOf("Program");
+  const cNilai   = headers.indexOf("Nilai");
+  const cStatus  = headers.indexOf("Status");
+  const cNotif   = headers.indexOf("Notif Email");
+  const cLink    = headers.indexOf("Link Sertifikat");
+
+  const programMap = _mapProgram();
+  const stamp = Utilities.formatDate(
+    new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm"
+  );
+
+  let terkirim = 0;
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][cStatus] !== "Lulus" || data[i][cNotif]) continue;
+
+    // Skip kalau Link Sertifikat masih kosong — Soal 1 harus dijalankan dulu
+    const linkDoc = data[i][cLink];
+    if (!linkDoc) {
+      console.log(`Skip ${data[i][cId]}: belum punya Link Sertifikat — jalankan Soal 1 dulu.`);
+      continue;
+    }
+
+    const idPst    = data[i][cId];
+    const nama     = data[i][cNama];
+    const email    = data[i][cEmail];
+    const kodeProg = data[i][cProgKd];
+    const nilai    = data[i][cNilai];
+    const namaProg = (programMap[kodeProg] || {})["Nama Program"] || kodeProg;
+
+    // Ambil Doc sertifikat → konversi ke PDF blob untuk attachment
+    const docId = _extractDocId(linkDoc);
+    const pdfBlob = DriveApp.getFileById(docId)
+      .getAs("application/pdf")
+      .setName(`Surat-Keterangan-${idPst}.pdf`);
+
+    MailApp.sendEmail({
+      to: email,
+      subject: `[Sertifikat] ${namaProg} — ${nama}`,
+      body: [
+        `Halo ${nama},`,
+        ``,
+        `Selamat! Anda telah dinyatakan LULUS pada program berikut:`,
+        ``,
+        `Nama Program : ${namaProg}`,
+        `Nilai Akhir  : ${nilai}`,
+        ``,
+        `Surat Keterangan Lulus Anda terlampir sebagai PDF dan juga bisa diakses online di:`,
+        linkDoc,
+        ``,
+        `Salam,`,
+        `Penyelenggara Pelatihan`
+      ].join("\n"),
+      attachments: [pdfBlob]
+    });
+
+    data[i][cNotif] = stamp;
+    terkirim++;
+  }
+
+  // Tulis ulang kolom Notif Email dalam 1 round-trip
+  const kolomNotif = data.map((r) => [r[cNotif]]);
+  sheet.getRange(1, cNotif + 1, kolomNotif.length, 1).setValues(kolomNotif);
+
+  console.log(`${terkirim} email dikirim.`);
 }
 
 

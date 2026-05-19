@@ -568,36 +568,7 @@ flowchart LR
 
 ---
 
-## 8. Trigger Sederhana — `onEdit` & `onOpen`
-
-(Pendalaman trigger ada di Modul 6. Di sini cukup pengenalan agar Anda lihat kemungkinannya.)
-
-> Catatan: kalau Anda pakai pola Library dari §7, ingat — `addItem(label, "namaFunction")` hanya menerima nama function yang ada di project container-bound itu sendiri. Untuk panggil function dari library, bungkus pakai stub lokal seperti contoh `menuTandai()` di §7.2.
-
-```javascript
-// Otomatis jalan saat user mengetik di sheet
-function onEdit(e) {
-  const range = e.range;
-  if (range.getColumn() === 4 && range.getValue() === "DONE") {
-    range.setBackground("#dcfce7");
-  }
-}
-
-// Otomatis jalan saat sheet dibuka — bikin custom menu
-function onOpen() {
-  SpreadsheetApp.getUi()
-    .createMenu("Otomasi")
-    .addItem("Tandai gaji tinggi", "tandaiGajiTinggi")
-    .addItem("Reset format",       "resetFormat")
-    .addToUi();
-}
-```
-
-> Trigger `onEdit`/`onOpen` hanya bekerja kalau script **container-bound** (dibuat lewat **Extensions → Apps Script** dari dalam Sheet). Standalone script tidak punya konteks Sheet aktif.
-
----
-
-## 9. Chart & Visualisasi
+## 8. Chart & Visualisasi
 
 Selain manipulasi data, Apps Script juga bisa **bikin, update, dan hapus chart** di Sheet secara programatik. Cocok untuk auto-update dashboard tanpa harus klik manual.
 
@@ -781,7 +752,7 @@ Pola ini bisa di-trigger oleh `onEdit`, `onFormSubmit`, atau time-driven (Modul 
 
 ---
 
-## 10. Mini-Project — Sinkronisasi Sheet → Email
+## 9. Mini-Project — Sinkronisasi Sheet → Email
 
 Skenario: Sheet "Pesanan" punya kolom `Status`. Tiap baris yang baru saja diubah jadi `Selesai` dikirim email konfirmasi ke kolom `Email Customer`, lalu kolom `Notif Terkirim` diisi tanggal hari ini.
 
@@ -847,7 +818,7 @@ function kirimNotifPesananSelesai() {
 
 ---
 
-## 11. Penutup
+## 10. Penutup
 
 **Yang harus dikuasai sebelum lanjut**:
 
@@ -858,7 +829,6 @@ function kirimNotifPesananSelesai() {
 - [ ] Bisa konversi array 2D ↔ array of object pakai header.
 - [ ] Bisa append baris dan cari baris by value.
 - [ ] Bisa bikin Custom Function untuk dipanggil sebagai formula.
-- [ ] Tahu adanya `onEdit` / `onOpen` (detail lebih jauh di Modul 6).
 - [ ] Bisa bikin chart (column/pie/bar) dari kode pakai builder `sheet.newChart()`.
 - [ ] Tahu pola "rebuild chart" untuk dashboard auto-update.
 - [ ] Tahu 2 cara reuse kode antar Sheet: copy-paste vs Library, dan kapan pilih masing-masing.

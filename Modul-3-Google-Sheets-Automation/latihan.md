@@ -4,15 +4,17 @@
 
 | Soal | Integrasi |
 |---|---|
-| Soal 1 | Sheets ↔ **Gmail** (mail merge sertifikat) |
-| Soal 2 | Sheets ↔ **Google Docs** (generate Surat Keterangan Lulus) |
+| Soal 1 | Sheets ↔ **Google Docs** (generate Surat Keterangan Lulus) |
+| Soal 2 | Sheets ↔ **Gmail** (kirim email + link Doc ke peserta) |
 | Soal 3 | Sheets ↔ **Calendar** (jadwal pelatihan + undang peserta) |
+
+> **Urutan ini sengaja**: Soal 1 menghasilkan **Link Sertifikat** di Sheet; Soal 2 memakai link itu sebagai isi email. Jadi kerjakan urut, jangan lompat.
 
 **Persiapan**:
 
 1. Buat satu Google Sheet baru, beri nama `Latihan-M3`. Copy ID-nya.
 2. Buat **dua tab**: `Peserta` dan `Program`.
-3. Buat **satu folder** di Drive bernama `Latihan-M3-Output` (untuk menampung Doc yang digenerate di Soal 2). Copy ID folder dari URL-nya.
+3. Buat **satu folder** di Drive bernama `Latihan-M3-Output` (untuk menampung Doc yang digenerate di Soal 1). Copy ID folder dari URL-nya.
 
 ### Tab `Peserta`
 
@@ -30,7 +32,7 @@
 **Format kolom**:
 - `Tanggal Daftar`: **Format → Number → Date** (yyyy-mm-dd).
 - `Nilai`: Number biasa (0–100); biarkan kosong untuk peserta yang belum dinilai.
-- `Email`: minimal **2 baris** harus email Anda sendiri (untuk Soal 1).
+- `Email`: minimal **2 baris** harus email Anda sendiri (untuk Soal 2).
 - `Notif Email` & `Link Sertifikat`: kosongkan — akan diisi otomatis oleh script.
 
 ### Tab `Program`
@@ -51,28 +53,7 @@
 
 ---
 
-## Soal 1 — Sheets ↔ Gmail: Mail Merge Sertifikat
-
-Buat function `kirimSertifikatEmail()` yang:
-
-1. Baca tab `Peserta` dan tab `Program`. Bikin Map `kode → namaProgram` dari tab `Program` untuk lookup.
-2. Untuk setiap baris dengan `Status = Lulus` **DAN** `Notif Email` masih kosong:
-   - Kirim email via `MailApp.sendEmail({...})` ke `Email` peserta:
-     - **Subject**: `[Sertifikat] {Nama Program} — {Nama Peserta}`
-     - **Body**: ucapan selamat + ringkasan (Nama, Program, Nilai).
-   - Isi `Notif Email` dengan timestamp (`yyyy-MM-dd HH:mm`).
-3. Tulis ulang kolom `Notif Email` ke Sheet **dalam 1× `setValues`** untuk seluruh kolom.
-4. Log jumlah email yang dikirim.
-
-**Test idempotent**:
-- Run pertama → kirim email ke semua baris `Lulus`.
-- Run kedua **tanpa ganti apa-apa** → log `"0 email dikirim"`.
-
-> Kuota Gmail gratis: 100 email/hari. Untuk testing aman dengan 4–5 baris `Lulus` di sample data.
-
----
-
-## Soal 2 — Sheets ↔ Google Docs: Generate Surat Keterangan Lulus
+## Soal 1 — Sheets ↔ Google Docs: Generate Surat Keterangan Lulus
 
 Buat function `generateSuratKeterangan()` yang:
 
@@ -106,6 +87,36 @@ Buat function `generateSuratKeterangan()` yang:
 **Test idempotent**: run kedua tanpa ganti apa-apa → log `"0 Doc dibuat"`.
 
 > Hint: `body.getParagraphs()[0].setHeading(DocumentApp.ParagraphHeading.HEADING1)`. Untuk nomor surat pakai `Utilities.formatDate(new Date(), tz, "yyyy-MM")`.
+
+---
+
+## Soal 2 — Sheets ↔ Gmail: Kirim Sertifikat via Email
+
+> **Prasyarat**: Soal 1 sudah dijalankan sehingga kolom `Link Sertifikat` di tab `Peserta` sudah terisi untuk peserta `Lulus`.
+
+Buat function `kirimSertifikatEmail()` yang:
+
+1. Baca tab `Peserta` dan tab `Program`. Bikin Map `kode → namaProgram` dari tab `Program` untuk lookup.
+2. Untuk setiap baris dengan `Status = Lulus` **DAN** `Notif Email` masih kosong **DAN** `Link Sertifikat` sudah terisi:
+   - **Ambil Doc sertifikat peserta** dari Drive berdasarkan URL di kolom `Link Sertifikat`, lalu konversi ke **PDF blob** untuk dijadikan attachment.
+   - Kirim email via `MailApp.sendEmail({...})` ke `Email` peserta:
+     - **Subject**: `[Sertifikat] {Nama Program} — {Nama Peserta}`
+     - **Body**: ucapan selamat + ringkasan (Nama, Program, Nilai) + **link ke Doc** dari kolom `Link Sertifikat` (untuk akses online).
+     - **attachments**: `[pdfBlob]` — PDF sertifikat di-attach langsung ke email. Beri nama file: `"Surat-Keterangan-{ID Peserta}.pdf"`.
+   - Isi `Notif Email` dengan timestamp (`yyyy-MM-dd HH:mm`).
+3. Tulis ulang kolom `Notif Email` ke Sheet **dalam 1× `setValues`** untuk seluruh kolom.
+4. Log jumlah email yang dikirim. Kalau ada baris `Lulus` yang `Link Sertifikat`-nya masih kosong, **skip** dan log peringatan: `"Skip {ID Peserta}: belum punya Link Sertifikat — jalankan Soal 1 dulu."`.
+
+**Test idempotent**:
+- Run pertama → kirim email ke semua baris `Lulus` yang punya `Link Sertifikat`.
+- Run kedua **tanpa ganti apa-apa** → log `"0 email dikirim"`.
+
+> **Cara ambil Doc sebagai PDF**:
+> 1. Extract ID Doc dari URL `Link Sertifikat`. Format URL: `https://docs.google.com/document/d/{DOC_ID}/edit`. Gunakan regex `url.match(/\/d\/([^\/]+)/)[1]` untuk ambil ID-nya.
+> 2. `const blob = DriveApp.getFileById(docId).getAs("application/pdf").setName("Surat-Keterangan-PST-001.pdf");`
+> 3. Pass blob itu ke parameter `attachments: [blob]` di `MailApp.sendEmail({...})`.
+>
+> Kuota: Gmail gratis 100 email/hari. Untuk testing aman dengan 4–5 baris `Lulus`. **Ukuran attachment** total per email: maks 25 MB; PDF sertifikat satu halaman jauh di bawah batas itu.
 
 ---
 
