@@ -1,16 +1,16 @@
 /**
  * Modul 3 — Solusi Latihan
  *
- * Tiga latihan integrasi (kerjakan berurutan):
- *   Soal 1: Sheets ↔ Docs    — generate Surat Keterangan Lulus (isi kolom "Link Sertifikat")
- *   Soal 2: Sheets ↔ Gmail   — kirim email berisi link Doc ke peserta
- *   Soal 3: Sheets ↔ Calendar — jadwal pelatihan + undangan peserta
+ * Tiga latihan integrasi mengikuti alur kronologis pelatihan (kerjakan berurutan):
+ *   Soal 1: Sheets ↔ Calendar — jadwal pelatihan + undang peserta   [Sebelum pelatihan]
+ *   Soal 2: Sheets ↔ Docs     — generate Surat Keterangan Lulus     [Setelah pelatihan]
+ *   Soal 3: Sheets ↔ Gmail    — kirim email + PDF sertifikat        [Distribusi]
  *
  * Setup:
  *   - Set SHEET_ID  ke ID Sheet "Latihan-M3".
- *   - Set FOLDER_ID ke ID folder Drive "Latihan-M3-Output" (untuk Soal 1).
+ *   - Set FOLDER_ID ke ID folder Drive "Latihan-M3-Output" (untuk Soal 2).
  *   - Pastikan minimal 1–2 email di tab Peserta adalah email Anda sendiri
- *     supaya bisa verifikasi tanpa spam orang lain.
+ *     supaya bisa verifikasi undangan (Soal 1) & email sertifikat (Soal 3) tanpa spam orang lain.
  */
 
 const SHEET_ID  = "GANTI_DENGAN_ID_SHEET_LATIHAN_M3";
@@ -56,7 +56,84 @@ function _extractDocId(url) {
 
 
 /* ===================================================================
- * Soal 1 — Sheets ↔ Docs: Generate Surat Keterangan Lulus
+ * Soal 1 — Sheets ↔ Calendar: Jadwal Pelatihan + Undangan Peserta
+ * (Fase: sebelum pelatihan dimulai)
+ * =================================================================== */
+function buatJadwalPelatihan() {
+  const ss = _ss();
+  const shProg = ss.getSheetByName("Program");
+  const dataProg = shProg.getDataRange().getValues();
+  const hProg = dataProg[0];
+
+  // Tambah kolom "Event ID" kalau belum ada
+  let cEvent = hProg.indexOf("Event ID");
+  if (cEvent === -1) {
+    shProg.getRange(1, hProg.length + 1).setValue("Event ID");
+    hProg.push("Event ID");
+    cEvent = hProg.length - 1;
+    // Sinkronkan dataProg supaya kolomnya ada
+    for (let i = 1; i < dataProg.length; i++) dataProg[i].push("");
+  }
+
+  const cKode      = hProg.indexOf("Kode");
+  const cNamaProg  = hProg.indexOf("Nama Program");
+  const cBiaya     = hProg.indexOf("Biaya");
+  const cTglMulai  = hProg.indexOf("Tanggal Mulai");
+  const cTglSelesai= hProg.indexOf("Tanggal Selesai");
+  const cLokasi    = hProg.indexOf("Lokasi");
+
+  // Kumpulkan email peserta per program (skip Tidak Lulus)
+  const pesertaMap = {};   // kodeProgram → [email, ...]
+  _readAsObjects("Peserta").forEach((p) => {
+    if (p.Status === "Tidak Lulus" || !p.Email) return;
+    if (!pesertaMap[p.Program]) pesertaMap[p.Program] = [];
+    pesertaMap[p.Program].push(p.Email);
+  });
+
+  const cal = CalendarApp.getDefaultCalendar();
+  let dibuat = 0;
+
+  for (let i = 1; i < dataProg.length; i++) {
+    if (dataProg[i][cEvent]) continue;  // idempotent: skip kalau sudah ada Event ID
+
+    const kode    = dataProg[i][cKode];
+    const nama    = dataProg[i][cNamaProg];
+    const biaya   = dataProg[i][cBiaya];
+    const lokasi  = dataProg[i][cLokasi];
+    const tMulai  = dataProg[i][cTglMulai];
+    const tSelesai= dataProg[i][cTglSelesai];
+
+    if (!(tMulai instanceof Date) || !(tSelesai instanceof Date)) {
+      console.log(`Skip ${kode}: tanggal belum di-format sebagai Date.`);
+      continue;
+    }
+
+    // Set jam: mulai 09:00, selesai 17:00
+    const start = new Date(tMulai.getFullYear(),  tMulai.getMonth(),  tMulai.getDate(),  9, 0);
+    const end   = new Date(tSelesai.getFullYear(),tSelesai.getMonth(),tSelesai.getDate(),17, 0);
+
+    const guests = (pesertaMap[kode] || []).join(",");
+
+    const event = cal.createEvent(`${kode} — ${nama}`, start, end, {
+      description: `Lokasi: ${lokasi}\nBiaya: Rp ${Number(biaya).toLocaleString("id-ID")}`,
+      guests: guests,
+      sendInvites: true
+    });
+
+    dataProg[i][cEvent] = event.getId();
+    dibuat++;
+  }
+
+  // Tulis ulang tab Program (1 round-trip)
+  shProg.getRange(1, 1, dataProg.length, dataProg[0].length).setValues(dataProg);
+
+  console.log(`${dibuat} event baru dibuat di Calendar.`);
+}
+
+
+/* ===================================================================
+ * Soal 2 — Sheets ↔ Docs: Generate Surat Keterangan Lulus
+ * (Fase: setelah pelatihan selesai)
  * =================================================================== */
 function generateSuratKeterangan() {
   if (!FOLDER_ID || FOLDER_ID === "GANTI_DENGAN_ID_FOLDER_OUTPUT") {
@@ -140,9 +217,10 @@ function generateSuratKeterangan() {
 
 
 /* ===================================================================
- * Soal 2 — Sheets ↔ Gmail: Kirim Sertifikat via Email
+ * Soal 3 — Sheets ↔ Gmail: Kirim Sertifikat via Email
+ * (Fase: distribusi ke peserta)
  *
- * Prasyarat: Soal 1 sudah dijalankan sehingga kolom "Link Sertifikat"
+ * Prasyarat: Soal 2 sudah dijalankan sehingga kolom "Link Sertifikat"
  * terisi untuk peserta Lulus.
  * =================================================================== */
 function kirimSertifikatEmail() {
@@ -169,10 +247,10 @@ function kirimSertifikatEmail() {
   for (let i = 1; i < data.length; i++) {
     if (data[i][cStatus] !== "Lulus" || data[i][cNotif]) continue;
 
-    // Skip kalau Link Sertifikat masih kosong — Soal 1 harus dijalankan dulu
+    // Skip kalau Link Sertifikat masih kosong — Soal 2 harus dijalankan dulu
     const linkDoc = data[i][cLink];
     if (!linkDoc) {
-      console.log(`Skip ${data[i][cId]}: belum punya Link Sertifikat — jalankan Soal 1 dulu.`);
+      console.log(`Skip ${data[i][cId]}: belum punya Link Sertifikat — jalankan Soal 2 dulu.`);
       continue;
     }
 
@@ -200,8 +278,7 @@ function kirimSertifikatEmail() {
         `Nama Program : ${namaProg}`,
         `Nilai Akhir  : ${nilai}`,
         ``,
-        `Surat Keterangan Lulus Anda terlampir sebagai PDF dan juga bisa diakses online di:`,
-        linkDoc,
+        `Surat Keterangan Lulus Anda terlampir sebagai PDF pada email ini.`,
         ``,
         `Salam,`,
         `Penyelenggara Pelatihan`
@@ -218,79 +295,4 @@ function kirimSertifikatEmail() {
   sheet.getRange(1, cNotif + 1, kolomNotif.length, 1).setValues(kolomNotif);
 
   console.log(`${terkirim} email dikirim.`);
-}
-
-
-/* ===================================================================
- * Soal 3 — Sheets ↔ Calendar: Jadwal Pelatihan + Undangan Peserta
- * =================================================================== */
-function buatJadwalPelatihan() {
-  const ss = _ss();
-  const shProg = ss.getSheetByName("Program");
-  const dataProg = shProg.getDataRange().getValues();
-  const hProg = dataProg[0];
-
-  // Tambah kolom "Event ID" kalau belum ada
-  let cEvent = hProg.indexOf("Event ID");
-  if (cEvent === -1) {
-    shProg.getRange(1, hProg.length + 1).setValue("Event ID");
-    hProg.push("Event ID");
-    cEvent = hProg.length - 1;
-    // Sinkronkan dataProg supaya kolomnya ada
-    for (let i = 1; i < dataProg.length; i++) dataProg[i].push("");
-  }
-
-  const cKode      = hProg.indexOf("Kode");
-  const cNamaProg  = hProg.indexOf("Nama Program");
-  const cBiaya     = hProg.indexOf("Biaya");
-  const cTglMulai  = hProg.indexOf("Tanggal Mulai");
-  const cTglSelesai= hProg.indexOf("Tanggal Selesai");
-  const cLokasi    = hProg.indexOf("Lokasi");
-
-  // Kumpulkan email peserta per program (skip Tidak Lulus)
-  const pesertaMap = {};   // kodeProgram → [email, ...]
-  _readAsObjects("Peserta").forEach((p) => {
-    if (p.Status === "Tidak Lulus" || !p.Email) return;
-    if (!pesertaMap[p.Program]) pesertaMap[p.Program] = [];
-    pesertaMap[p.Program].push(p.Email);
-  });
-
-  const cal = CalendarApp.getDefaultCalendar();
-  let dibuat = 0;
-
-  for (let i = 1; i < dataProg.length; i++) {
-    if (dataProg[i][cEvent]) continue;  // idempotent: skip kalau sudah ada Event ID
-
-    const kode    = dataProg[i][cKode];
-    const nama    = dataProg[i][cNamaProg];
-    const biaya   = dataProg[i][cBiaya];
-    const lokasi  = dataProg[i][cLokasi];
-    const tMulai  = dataProg[i][cTglMulai];
-    const tSelesai= dataProg[i][cTglSelesai];
-
-    if (!(tMulai instanceof Date) || !(tSelesai instanceof Date)) {
-      console.log(`Skip ${kode}: tanggal belum di-format sebagai Date.`);
-      continue;
-    }
-
-    // Set jam: mulai 09:00, selesai 17:00
-    const start = new Date(tMulai.getFullYear(),  tMulai.getMonth(),  tMulai.getDate(),  9, 0);
-    const end   = new Date(tSelesai.getFullYear(),tSelesai.getMonth(),tSelesai.getDate(),17, 0);
-
-    const guests = (pesertaMap[kode] || []).join(",");
-
-    const event = cal.createEvent(`${kode} — ${nama}`, start, end, {
-      description: `Lokasi: ${lokasi}\nBiaya: Rp ${Number(biaya).toLocaleString("id-ID")}`,
-      guests: guests,
-      sendInvites: true
-    });
-
-    dataProg[i][cEvent] = event.getId();
-    dibuat++;
-  }
-
-  // Tulis ulang tab Program (1 round-trip)
-  shProg.getRange(1, 1, dataProg.length, dataProg[0].length).setValues(dataProg);
-
-  console.log(`${dibuat} event baru dibuat di Calendar.`);
 }

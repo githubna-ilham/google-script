@@ -2,19 +2,19 @@
 
 **Konteks**: Anda mengelola data peserta sebuah **lembaga pelatihan**. Tiga latihan di bawah fokus pada **integrasi Sheets dengan service Workspace lain** yang sudah dipelajari di Modul 2:
 
-| Soal | Integrasi |
-|---|---|
-| Soal 1 | Sheets ↔ **Google Docs** (generate Surat Keterangan Lulus) |
-| Soal 2 | Sheets ↔ **Gmail** (kirim email + link Doc ke peserta) |
-| Soal 3 | Sheets ↔ **Calendar** (jadwal pelatihan + undang peserta) |
+| Soal | Integrasi | Fase |
+|---|---|---|
+| Soal 1 | Sheets ↔ **Calendar** (jadwal pelatihan + undang peserta) | Sebelum pelatihan |
+| Soal 2 | Sheets ↔ **Google Docs** (generate Surat Keterangan Lulus) | Setelah pelatihan selesai |
+| Soal 3 | Sheets ↔ **Gmail** (kirim email + PDF sertifikat) | Distribusi ke peserta |
 
-> **Urutan ini sengaja**: Soal 1 menghasilkan **Link Sertifikat** di Sheet; Soal 2 memakai link itu sebagai isi email. Jadi kerjakan urut, jangan lompat.
+> **Urutan ini meniru alur kronologis pelatihan**: jadwalkan dulu → setelah peserta lulus, generate dokumen sertifikat → kirim sertifikat (PDF dari Soal 2) ke peserta via email. Kerjakan urut, jangan lompat.
 
 **Persiapan**:
 
 1. Buat satu Google Sheet baru, beri nama `Latihan-M3`. Copy ID-nya.
 2. Buat **dua tab**: `Peserta` dan `Program`.
-3. Buat **satu folder** di Drive bernama `Latihan-M3-Output` (untuk menampung Doc yang digenerate di Soal 1). Copy ID folder dari URL-nya.
+3. Buat **satu folder** di Drive bernama `Latihan-M3-Output` (untuk menampung Doc yang digenerate di Soal 2). Copy ID folder dari URL-nya.
 
 ### Tab `Peserta`
 
@@ -32,7 +32,7 @@
 **Format kolom**:
 - `Tanggal Daftar`: **Format → Number → Date** (yyyy-mm-dd).
 - `Nilai`: Number biasa (0–100); biarkan kosong untuk peserta yang belum dinilai.
-- `Email`: minimal **2 baris** harus email Anda sendiri (untuk Soal 2).
+- `Email`: minimal **2 baris** harus email Anda sendiri (untuk Soal 1 undangan & Soal 3 sertifikat).
 - `Notif Email` & `Link Sertifikat`: kosongkan — akan diisi otomatis oleh script.
 
 ### Tab `Program`
@@ -53,7 +53,35 @@
 
 ---
 
-## Soal 1 — Sheets ↔ Google Docs: Generate Surat Keterangan Lulus
+## Soal 1 — Sheets ↔ Calendar: Jadwal Pelatihan + Undangan Peserta
+
+**Fase: Sebelum pelatihan dimulai.** Sebagai admin, langkah pertama adalah menjadwalkan tiap program di kalender dan mengundang peserta yang sudah terdaftar.
+
+Buat function `buatJadwalPelatihan()` yang:
+
+1. Baca tab `Program` dan tab `Peserta`.
+2. Untuk setiap program di tab `Program`:
+   - Kumpulkan **daftar email peserta** yang terdaftar di program itu **DAN** status-nya bukan `Tidak Lulus` (jadi: `Lulus` + `Sedang Berjalan`).
+   - Bikin event di kalender default (`CalendarApp.getDefaultCalendar().createEvent(...)`):
+     - **Title**: `{Kode} — {Nama Program}`
+     - **Start**: `Tanggal Mulai` jam 09:00 (waktu lokal).
+     - **End**: `Tanggal Selesai` jam 17:00.
+     - **Description**: `"Lokasi: {Lokasi}\nBiaya: Rp {biaya}"`.
+     - **Guests**: daftar email peserta (di-join koma).
+     - **sendInvites**: `true`.
+   - Tambahkan kolom `Event ID` di tab `Program` (kalau belum ada) dan isi dengan `event.getId()`.
+3. **Idempotent**: kalau kolom `Event ID` di baris program sudah terisi, **skip** program itu (jangan duplikat event).
+4. Log jumlah event baru yang dibuat.
+
+> Hint: `CalendarApp.createEvent(title, start, end, { description, guests, sendInvites })`. Untuk set jam: `new Date(tanggal.getFullYear(), tanggal.getMonth(), tanggal.getDate(), 9, 0)`.
+>
+> ⚠️ **Hati-hati saat test**: `sendInvites: true` akan benar-benar kirim undangan ke email peserta. Untuk latihan, ganti dulu email peserta dengan email Anda sendiri (minimal 1 program), atau set `sendInvites: false` saat test pertama.
+
+---
+
+## Soal 2 — Sheets ↔ Google Docs: Generate Surat Keterangan Lulus
+
+**Fase: Setelah pelatihan selesai.** Untuk peserta yang `Lulus`, generate dokumen Surat Keterangan-nya satu per satu.
 
 Buat function `generateSuratKeterangan()` yang:
 
@@ -90,22 +118,24 @@ Buat function `generateSuratKeterangan()` yang:
 
 ---
 
-## Soal 2 — Sheets ↔ Gmail: Kirim Sertifikat via Email
+## Soal 3 — Sheets ↔ Gmail: Kirim Sertifikat via Email
 
-> **Prasyarat**: Soal 1 sudah dijalankan sehingga kolom `Link Sertifikat` di tab `Peserta` sudah terisi untuk peserta `Lulus`.
+**Fase: Distribusi ke peserta.** Dokumen yang sudah digenerate di Soal 2 sekarang dikirim ke masing-masing peserta lewat email, sebagai PDF attachment.
+
+> **Prasyarat**: Soal 2 sudah dijalankan sehingga kolom `Link Sertifikat` di tab `Peserta` sudah terisi untuk peserta `Lulus`.
 
 Buat function `kirimSertifikatEmail()` yang:
 
 1. Baca tab `Peserta` dan tab `Program`. Bikin Map `kode → namaProgram` dari tab `Program` untuk lookup.
 2. Untuk setiap baris dengan `Status = Lulus` **DAN** `Notif Email` masih kosong **DAN** `Link Sertifikat` sudah terisi:
-   - **Ambil Doc sertifikat peserta** dari Drive berdasarkan URL di kolom `Link Sertifikat`, lalu konversi ke **PDF blob** untuk dijadikan attachment.
+   - **Ambil dokumen sertifikat peserta yang digenerate di Soal 2** (Doc dengan URL tersimpan di kolom `Link Sertifikat`), lalu konversi ke **PDF blob** untuk dijadikan attachment.
    - Kirim email via `MailApp.sendEmail({...})` ke `Email` peserta:
      - **Subject**: `[Sertifikat] {Nama Program} — {Nama Peserta}`
-     - **Body**: ucapan selamat + ringkasan (Nama, Program, Nilai) + **link ke Doc** dari kolom `Link Sertifikat` (untuk akses online).
+     - **Body**: ucapan selamat + ringkasan (Nama, Program, Nilai). Sebutkan bahwa **dokumen sertifikat dari Soal 2 terlampir sebagai PDF**.
      - **attachments**: `[pdfBlob]` — PDF sertifikat di-attach langsung ke email. Beri nama file: `"Surat-Keterangan-{ID Peserta}.pdf"`.
    - Isi `Notif Email` dengan timestamp (`yyyy-MM-dd HH:mm`).
 3. Tulis ulang kolom `Notif Email` ke Sheet **dalam 1× `setValues`** untuk seluruh kolom.
-4. Log jumlah email yang dikirim. Kalau ada baris `Lulus` yang `Link Sertifikat`-nya masih kosong, **skip** dan log peringatan: `"Skip {ID Peserta}: belum punya Link Sertifikat — jalankan Soal 1 dulu."`.
+4. Log jumlah email yang dikirim. Kalau ada baris `Lulus` yang `Link Sertifikat`-nya masih kosong, **skip** dan log peringatan: `"Skip {ID Peserta}: belum punya Link Sertifikat — jalankan Soal 2 dulu."`.
 
 **Test idempotent**:
 - Run pertama → kirim email ke semua baris `Lulus` yang punya `Link Sertifikat`.
@@ -117,30 +147,6 @@ Buat function `kirimSertifikatEmail()` yang:
 > 3. Pass blob itu ke parameter `attachments: [blob]` di `MailApp.sendEmail({...})`.
 >
 > Kuota: Gmail gratis 100 email/hari. Untuk testing aman dengan 4–5 baris `Lulus`. **Ukuran attachment** total per email: maks 25 MB; PDF sertifikat satu halaman jauh di bawah batas itu.
-
----
-
-## Soal 3 — Sheets ↔ Calendar: Jadwal Pelatihan + Undangan Peserta
-
-Buat function `buatJadwalPelatihan()` yang:
-
-1. Baca tab `Program` dan tab `Peserta`.
-2. Untuk setiap program di tab `Program`:
-   - Kumpulkan **daftar email peserta** yang terdaftar di program itu **DAN** status-nya bukan `Tidak Lulus` (jadi: `Lulus` + `Sedang Berjalan`).
-   - Bikin event di kalender default (`CalendarApp.getDefaultCalendar().createEvent(...)`):
-     - **Title**: `{Kode} — {Nama Program}`
-     - **Start**: `Tanggal Mulai` jam 09:00 (waktu lokal).
-     - **End**: `Tanggal Selesai` jam 17:00.
-     - **Description**: `"Lokasi: {Lokasi}\nBiaya: Rp {biaya}"`.
-     - **Guests**: daftar email peserta (di-join koma).
-     - **sendInvites**: `true`.
-   - Tambahkan kolom `Event ID` di tab `Program` (kalau belum ada) dan isi dengan `event.getId()`.
-3. **Idempotent**: kalau kolom `Event ID` di baris program sudah terisi, **skip** program itu (jangan duplikat event).
-4. Log jumlah event baru yang dibuat.
-
-> Hint: `CalendarApp.createEvent(title, start, end, { description, guests, sendInvites })`. Untuk set jam: `new Date(tanggal.getFullYear(), tanggal.getMonth(), tanggal.getDate(), 9, 0)`.
->
-> ⚠️ **Hati-hati saat test**: `sendInvites: true` akan benar-benar kirim undangan ke email peserta. Untuk latihan, ganti dulu email peserta dengan email Anda sendiri (minimal 1 program), atau set `sendInvites: false` saat test pertama.
 
 ---
 
