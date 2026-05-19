@@ -561,7 +561,41 @@ Apps Script **tidak bisa baca .xlsx langsung**. Triknya: **upload file ke Drive 
 
 > **Wajib enable Advanced Drive Service**: Editor → ikon **+** di **Services** (sidebar kiri) → cari **Drive API** → Add. Tanpa ini, `Drive.Files.insert(..., { convert: true })` tidak tersedia.
 
-### 7.2 HTML Side
+### 7.2 Format File Excel yang Diharapkan
+
+Sebelum membahas kode, jelaskan ke admin **bagaimana file Excel harus disusun** supaya bisa di-import. Script kita expect:
+
+- **Sheet pertama** (tab paling kiri) yang dibaca — tab lain diabaikan.
+- **Baris 1 = header**, baris 2 ke bawah = data.
+- **4 kolom wajib** dengan nama persis: `Nama`, `Email`, `Instansi`, `Program`.
+- Urutan kolom **bebas** (script cari by name, bukan by index).
+- Kolom tambahan di file Excel akan **diabaikan** (atau di-include kalau Anda mau — tergantung kode).
+
+Contoh isi file `daftar-peserta.xlsx`:
+
+| Nama          | Email             | Instansi   | Program  |
+|---------------|-------------------|------------|----------|
+| Sari Wulan    | sari@kantor.id    | PT Alpha   | GAS-101  |
+| Budi Pratama  | budi@kantor.id    | PT Beta    | GAS-201  |
+| Tina Sari     | tina@kantor.id    | PT Gamma   | GAS-101  |
+| Andi Pratama  | andi@kantor.id    | PT Delta   | GAS-301  |
+| Rina Wati     | rina@kantor.id    | PT Epsilon | GAS-101  |
+
+**Aturan tambahan**:
+
+| Aturan | Catatan |
+|---|---|
+| Nama kolom **case-sensitive** | `Nama` ≠ `nama` ≠ `NAMA`. Pastikan persis. |
+| Tidak boleh ada baris kosong di antara data | Script baca sampai baris terakhir; baris kosong di tengah bisa bikin gap. |
+| `Email` minimal harus berformat valid | Validasi di server akan reject baris yang email-nya bukan format email. |
+| `Program` harus salah satu kode yang sudah ada di tab `Program` | mis. `GAS-101`, `GAS-201`, dst. Kalau tidak match → baris di-skip + dilaporkan. |
+| Maks ukuran file 25 MB | Batas payload `google.script.run`. Lebih dari itu pakai upload langsung ke Drive (tidak dibahas di sini). |
+
+**Template Excel**: admin bisa download template kosong (header sudah disiapkan) dari menu Sheet — pola umumnya: tambah item menu "Unduh template Excel" yang generate `.xlsx` lewat `SpreadsheetApp.create(...)` lalu kirim sebagai link ke user.
+
+> Untuk modul ini, peserta cukup bikin file `.xlsx` manual via Microsoft Excel / Google Sheet → **File → Download → Microsoft Excel (.xlsx)** dengan struktur di atas.
+
+### 7.3 HTML Side
 
 ```html
 <!-- ui-upload.html -->
@@ -602,7 +636,7 @@ function show(msg, cls) {
 </script>
 ```
 
-### 7.3 Server Side
+### 7.4 Server Side
 
 ```javascript
 function bukaUpload() {
@@ -654,7 +688,7 @@ function importExcel(base64, fileName, mimeType) {
 }
 ```
 
-### 7.4 Preview Sebelum Import (UX lebih baik)
+### 7.5 Preview Sebelum Import (UX lebih baik)
 
 User suka cemas saat upload file besar — "kira-kira datanya bener tidak ya?". Tambahkan **preview**: convert + baca di server, kembalikan struktur + 5 baris pertama, baru insert kalau user klik Confirm.
 
@@ -754,7 +788,7 @@ function renderTabel(r) {
 </script>
 ```
 
-### 7.5 Best Practices
+### 7.6 Best Practices
 
 1. **Validasi header dulu** — gagal cepat kalau struktur file tidak sesuai. Pesan error harus sebutkan kolom yang hilang/salah.
 2. **Validasi tiap baris** — cek tipe data (gaji harus angka, email harus valid). Kumpulkan error → tampilkan ke user, jangan langsung crash di baris pertama yang salah.
