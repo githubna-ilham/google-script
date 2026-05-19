@@ -78,8 +78,9 @@ function onOpen() {
 
   // ---- Menu 2: versi BERTINGKAT (sub-menu) ----
   const submenuPeserta = ui.createMenu("Peserta")
-    .addItem("Tambah cepat", "tambahPesertaCepat")
-    .addItem("Buka CRUD",    "bukaSidebarCRUD");
+    .addItem("Tambah cepat (prompt)", "tambahPesertaCepat")
+    .addItem("Form (sidebar)",        "bukaSidebarPeserta")
+    .addItem("Buka CRUD",             "bukaSidebarCRUD");
 
   const submenuProgram = ui.createMenu("Program")
     .addItem("Form tambah program", "bukaModalProgram")
@@ -101,12 +102,13 @@ Hasil di toolbar Sheet (setelah reload — keduanya muncul side-by-side):
                           │                  │
                           │ FLAT             │ BERTINGKAT
                           ├─ Tambah peserta  ├─ Peserta ▸
-                          ├─ Konfirmasi      │           ├─ Tambah cepat
-                          ├──────────────    │           └─ Buka CRUD
-                          ├─ Form Peserta    ├─ Program ▸
-                          ├─ Form Program    │           ├─ Form tambah program
-                          ├─ CRUD Peserta    │           └─ Lihat semua program
-                          └─ Import Excel    ├──────────────
+                          ├─ Konfirmasi      │           ├─ Tambah cepat (prompt)
+                          ├──────────────    │           ├─ Form (sidebar)
+                          ├─ Form Peserta    │           └─ Buka CRUD
+                          ├─ Form Program    ├─ Program ▸
+                          ├─ CRUD Peserta    │           ├─ Form tambah program
+                          └─ Import Excel    │           └─ Lihat semua program
+                                             ├──────────────
                                              └─ Import Excel
 ```
 
@@ -313,15 +315,10 @@ project Apps Script/
 
 ### 3.2 Server side: tampilkan sidebar
 
-```javascript
-// Code.gs
-function onOpen() {
-  SpreadsheetApp.getUi()
-    .createMenu("Menu Pelatihan")
-    .addItem("Form Peserta", "bukaSidebarPeserta")
-    .addToUi();
-}
+Function `bukaSidebarPeserta` ini **sudah terhubung** ke menu yang dibuat di §2.1 — lihat sub-menu **Peserta → Form (sidebar)** di versi BERTINGKAT (atau item **Form Peserta (sidebar)** di versi FLAT). Jadi cukup tambah dua function berikut di project — `onOpen` dari §2.1 sudah memanggilnya saat user klik menu.
 
+```javascript
+// Code.gs — function bukaSidebarPeserta dipanggil oleh menu di §2.1
 function bukaSidebarPeserta() {
   const html = HtmlService.createHtmlOutputFromFile("ui-form-peserta")
     .setTitle("Tambah Peserta")
