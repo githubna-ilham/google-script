@@ -1,37 +1,36 @@
 # Modul 7 — Web Apps & API Integration
 
-Di Modul 5 kita bikin form, tapi cuma bisa dibuka dari dalam Google Sheet. Di Modul 7 kita buat **halaman yang punya alamat URL sendiri** — bisa dibuka dari HP, dari laptop teman, dari mana saja. Dan kita juga belajar **menyambungkan script kita ke layanan luar** seperti cuaca, kurs mata uang, atau Slack.
+Di Modul 5 kita bikin form, tapi hanya bisa dibuka dari dalam Google Sheet. Di Modul 7 kita buat **halaman yang punya alamat URL sendiri** — bisa dibuka dari HP, laptop, atau perangkat manapun yang punya browser. Sekaligus belajar **menghubungkan script ke layanan luar** lewat API (misal: ambil data cuaca, kirim pesan ke Slack).
 
 ---
 
-## 0. Dua Konsep Utama (Pakai Analogi)
+## 0. Dua Konsep Utama
 
-Sebelum masuk kode, dua kata yang akan terus muncul:
+### Web App
 
-### 🏠 Web App = Warung yang Punya Alamat
+**Web App** adalah halaman yang di-host oleh Apps Script dan punya **URL sendiri** seperti `https://script.google.com/macros/s/AKfy.../exec`. Saat seseorang membuka URL itu di browser, function `doGet(e)` di project Anda akan dijalankan, dan output-nya (HTML atau JSON) ditampilkan di browser pengguna.
 
-Bayangkan Anda buka warung. Warung itu punya **alamat** (misal: Jl. Mawar 12). Siapapun yang tahu alamatnya bisa datang dan pesan.
+Gunakan Web App untuk:
+- Halaman publik (dashboard, form pendaftaran, info).
+- Endpoint API yang return JSON untuk dipakai sistem lain.
+- Antarmuka standalone yang tidak butuh user buka Google Sheet/Doc.
 
-**Web App** = warung versi internet. Alamatnya bukan Jl. Mawar, tapi URL panjang seperti `https://script.google.com/macros/s/AKfy.../exec`. Siapapun yang buka URL itu di browser, akan "dilayani" oleh script kita.
+### API (External)
 
-### 📞 API = Telepon Order ke Warung Lain
-
-Kadang warung kita butuh bahan dari warung sebelah. Kita angkat telepon, pesan, terima barang.
-
-**API** (Application Programming Interface) = cara script kita "menelepon" layanan lain di internet. Misal: telepon ke **wttr.in** untuk minta info cuaca, telepon ke **Slack** untuk titip pesan ke channel.
+**API** (Application Programming Interface) adalah cara dua sistem saling bertukar data lewat HTTP request. Di Apps Script, kita memanggil API luar pakai `UrlFetchApp.fetch(url)` — script kirim request ke layanan eksternal (cuaca, kurs, Slack, dll), lalu olah response-nya (biasanya JSON).
 
 ```mermaid
 flowchart LR
-    User["👤 Pengguna<br/>(buka URL)"] -->|GET| WebApp["🏠 Web App kita<br/>(doGet)"]:::wa
-    WebApp -->|UrlFetchApp.fetch| API["📞 API luar<br/>(cuaca, slack, dll)"]:::api
-    API -->|jawaban JSON| WebApp
+    User["Pengguna<br/>(buka URL)"] -->|GET| WebApp["Web App<br/>(doGet)"]:::wa
+    WebApp -->|UrlFetchApp.fetch| API["API luar<br/>(cuaca, Slack, dll)"]:::api
+    API -->|response JSON| WebApp
     WebApp -->|HTML / JSON| User
 
     classDef wa fill:#dbeafe,stroke:#3b82f6,stroke-width:2px
     classDef api fill:#fee2e2,stroke:#dc2626,stroke-width:2px
 ```
 
-Itu inti modul ini. Sisanya cuma detail teknis.
+Sebagian besar modul ini adalah varian dari dua konsep di atas.
 
 ---
 
@@ -51,9 +50,9 @@ function doGet(e) {
 
 > **Kenapa namanya `doGet`?** Karena saat browser membuka URL, browser kirim permintaan jenis **GET** ("tolong kasih saya halaman"). Apps Script otomatis mencari function bernama `doGet` untuk menjawab.
 
-### 1.2 Deploy (Publish) — Pelan-pelan
+### 1.2 Deploy (Publish)
 
-Tulisan kode saja belum cukup. Kita harus **deploy** supaya Google memberi kita URL.
+Kode saja belum cukup — Web App harus **di-deploy** terlebih dahulu agar Google memberikan URL publik.
 
 Langkah klik di editor Apps Script:
 
@@ -93,28 +92,28 @@ Aturan praktis: **selama development pakai Test URL, kalau sudah jadi baru bikin
 
 ---
 
-## 2. Bagaimana Apps Script Tahu Apa yang Dipanggil?
+## 2. Entry Point Web App: `doGet` & `doPost`
 
-Setiap kali ada yang buka URL Web App, Apps Script otomatis panggil salah satu dari dua function ini:
+Setiap kali ada request ke URL Web App, Apps Script otomatis memanggil salah satu dari dua function entry point berikut:
 
 | Function | Kapan dipanggil |
 |---|---|
-| **`doGet(e)`** | Saat URL dibuka di browser (GET request) |
-| **`doPost(e)`** | Saat ada yang mengirim data ke URL (POST request, biasanya dari script/webhook lain) |
+| **`doGet(e)`** | Saat URL dibuka di browser (HTTP GET request) |
+| **`doPost(e)`** | Saat sistem lain mengirim data ke URL (HTTP POST request — webhook, integrasi sistem, dll) |
 
-Parameter **`e`** itu objek berisi info request — siapa yang manggil, parameter apa yang dikirim, body request kalau POST, dll. Kita akan pakai `e` di bagian berikutnya.
+Parameter **`e`** berisi informasi request: query parameter (`e.parameter`), body request kalau POST (`e.postData`), dan metadata lain. Detail penggunaannya dibahas di section berikutnya.
 
-> Tidak harus bikin keduanya. Kalau cuma butuh tampilan, cukup `doGet`. Kalau cuma menerima webhook, cukup `doPost`.
+> Tidak wajib mendefinisikan keduanya. Untuk halaman publik / dashboard cukup `doGet`. Untuk webhook receiver cukup `doPost`.
 
 ---
 
 ## 3. Membaca Parameter dari URL
 
-URL bisa membawa "titipan" lewat **query string** — bagian setelah tanda `?`.
+URL Web App bisa menerima parameter lewat **query string** — bagian setelah tanda `?`.
 
 Contoh: `https://.../exec?nama=Sari&umur=28`
 
-Bagian `nama=Sari&umur=28` itu titipan. Kita ambil pakai `e.parameter`:
+Bagian `nama=Sari&umur=28` adalah query parameter. Untuk mengaksesnya di server gunakan `e.parameter`:
 
 ```javascript
 function doGet(e) {
@@ -170,11 +169,11 @@ Buka URL → terlihat seperti:
 
 ---
 
-## 5. Menelepon API Luar — `UrlFetchApp`
+## 5. Memanggil API Luar — `UrlFetchApp`
 
-Sekarang sisi sebaliknya: script kita yang **memanggil** layanan luar.
+Bagian ini membahas arah sebaliknya: script kita yang **memanggil** layanan eksternal lewat HTTP.
 
-Fungsi utamanya: **`UrlFetchApp.fetch(url)`**. Anggap saja seperti `fetch()` di browser, tapi versi Apps Script.
+Fungsi utamanya adalah `UrlFetchApp.fetch(url)` — equivalen dengan `fetch()` di browser, versi Apps Script.
 
 ### 5.1 Contoh paling sederhana — cek cuaca
 
@@ -487,15 +486,15 @@ Jalankan `setupDashboard()` sekali manual. Lalu:
 
 5. **Date di-format di server**: kolom Tanggal di Sheet jadi `Date` object di JS. Format ke `"yyyy-MM-dd"` di server pakai `Utilities.formatDate()` supaya client tinggal tampilkan tanpa parsing.
 
-`google.script.run.namaFunction(arg)` adalah jembatan Apps Script untuk memanggil function server dari client. Asynchronous — pakai `.withSuccessHandler(cb)` & `.withFailureHandler(cb)`.
+`google.script.run.namaFunction(arg)` adalah mekanisme Apps Script untuk memanggil function server dari client. Asynchronous — pakai `.withSuccessHandler(cb)` & `.withFailureHandler(cb)` untuk handle response & error.
 
 ---
 
 ## 7. Menerima Webhook — `doPost(e)`
 
-**Webhook** = "API tapi terbalik": layanan luar yang **mengirim data ke kita** saat ada kejadian. Contoh: setiap kali ada pembelian di toko, Stripe kirim notifikasi ke URL kita.
+**Webhook** adalah mekanisme di mana **layanan luar yang mengirim data ke Web App kita** saat ada kejadian tertentu. Berbeda dengan API biasa (script kita yang inisiatif kirim request), webhook bersifat inbound: sistem eksternal yang trigger script kita. Contoh: setiap kali ada pembayaran masuk, sistem pembayaran kirim notifikasi POST ke URL Web App kita.
 
-URL kita harus siap menerima. Caranya: bikin `doPost(e)`.
+Untuk menerima webhook, Web App harus punya `doPost(e)` yang siap menerima request POST.
 
 ```javascript
 function doPost(e) {
@@ -519,21 +518,11 @@ function _json(obj) {
 }
 ```
 
-### Test pakai curl (dari Terminal)
-
-```bash
-curl -X POST -H "Content-Type: application/json" \
-  -d '{"event":"signup","email":"alice@example.com"}' \
-  https://script.google.com/macros/s/.../exec
-```
-
-Buka Sheet → ada baris baru. 🎉
-
-> Belum punya layanan luar? Pakai **webhook.site** untuk simulasi, atau langsung test pakai curl seperti di atas.
+Setelah deploy ulang, kirim POST ke URL Web App dari sistem eksternal. Baris baru akan muncul di tab `Webhook-Log` setiap webhook diterima.
 
 ---
 
-## 8. Pengaturan Akses (Penting!)
+## 8. Pengaturan Akses Web App
 
 Saat deploy, ada dua dropdown yang menentukan **siapa yang bisa pakai** dan **dengan izin siapa script jalan**:
 
