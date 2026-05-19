@@ -170,25 +170,7 @@ function onOpen() {
 
 ---
 
-### 2.2 Alert dengan tombol
-
-```javascript
-function konfirmasiHapus() {
-  const ui = SpreadsheetApp.getUi();
-  const respon = ui.alert(
-    "Konfirmasi",
-    "Yakin mau menghapus baris peserta terpilih?",
-    ui.ButtonSet.YES_NO
-  );
-
-  if (respon === ui.Button.YES) {
-    // ... eksekusi hapus
-    ui.alert("Berhasil", "Baris peserta dihapus.", ui.ButtonSet.OK);
-  }
-}
-```
-
-### 2.3 Prompt — input dari user
+### 2.2 Prompt — input dari user
 
 Karena `ui.prompt()` hanya menerima **satu input per panggilan**, untuk mengisi 6 kolom kita panggil prompt **berurutan** — satu prompt per kolom. ID Peserta & Tanggal Daftar otomatis, jadi user cuma diminta 4 input.
 
@@ -251,6 +233,24 @@ Klik menu "Tambah peserta cepat (prompt)"
 User bisa **Cancel di langkah manapun** untuk batalkan keseluruhan — tidak ada baris setengah-jadi yang tertulis ke Sheet karena `appendRow` baru dipanggil setelah semua input terkumpul.
 
 > **Kalau form-nya panjang, sidebar/modal HTML lebih nyaman** — lihat section 3 untuk versi sidebar `bukaSidebarPeserta()` yang menampilkan semua field di satu form. Prompt cocok untuk **input kilat 1–4 field**; di luar itu UX-nya melelahkan.
+
+### 2.3 Alert dengan tombol
+
+```javascript
+function konfirmasiHapus() {
+  const ui = SpreadsheetApp.getUi();
+  const respon = ui.alert(
+    "Konfirmasi",
+    "Yakin mau menghapus baris peserta terpilih?",
+    ui.ButtonSet.YES_NO
+  );
+
+  if (respon === ui.Button.YES) {
+    // ... eksekusi hapus
+    ui.alert("Berhasil", "Baris peserta dihapus.", ui.ButtonSet.OK);
+  }
+}
+```
 
 ## 3. HTML Sidebar & Modal
 
