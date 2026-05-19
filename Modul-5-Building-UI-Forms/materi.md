@@ -10,6 +10,8 @@ Sampai Modul 4, semua interaksi dengan kode lewat **Run** di editor atau trigger
 
 | ID Peserta | Tanggal Daftar | Nama | Email | Instansi | Program | Nilai | Status |
 
+> Fungsi form tambah peserta di modul ini hanya mengisi **6 kolom pertama** (`ID Peserta` → `Program`). Kolom `Nilai` & `Status` dibiarkan kosong saat input — diisi belakangan oleh proses lain (penilaian akhir, update status saat pelatihan jalan/selesai — lihat Modul 3).
+
 **Tab `Program`** (7 kolom):
 
 | Kode | Nama Program | Kapasitas | Biaya | Tanggal Mulai | Tanggal Selesai | Lokasi |
@@ -204,8 +206,8 @@ function tambahPesertaCepat() {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Peserta");
     const idBaru = _generateIdPeserta(sheet);
 
-    // [ID Peserta, Tanggal Daftar, Nama, Email, Instansi, Program, Nilai, Status]
-    sheet.appendRow([idBaru, new Date(), nama, "", "", "", "", "Sedang Berjalan"]);
+    // [ID Peserta, Tanggal Daftar, Nama, Email, Instansi, Program]
+    sheet.appendRow([idBaru, new Date(), nama, "", "", ""]);
   }
 }
 
@@ -256,15 +258,15 @@ function simpanPeserta(formData) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Peserta");
   const idBaru = _generateIdPeserta(sheet);
 
+  // Form hanya mengisi 6 kolom pertama.
+  // Kolom Nilai & Status di-handle proses lain (default Sheet: kosong).
   sheet.appendRow([
-    idBaru,
-    new Date(),
-    formData.nama,
-    formData.email,
-    formData.instansi,
-    formData.program,
-    "",                  // Nilai — kosong sampai pelatihan selesai
-    "Sedang Berjalan"
+    idBaru,             // 1. ID Peserta
+    new Date(),         // 2. Tanggal Daftar
+    formData.nama,      // 3. Nama
+    formData.email,     // 4. Email
+    formData.instansi,  // 5. Instansi
+    formData.program    // 6. Program
   ]);
 
   return { ok: true, message: `Peserta ${idBaru} tersimpan.`, idBaru };
