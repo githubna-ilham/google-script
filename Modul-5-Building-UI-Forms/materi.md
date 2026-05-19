@@ -190,25 +190,40 @@ function konfirmasiHapus() {
 
 ### 2.3 Prompt — input dari user
 
+Karena `ui.prompt()` hanya menerima **satu input per panggilan**, untuk mengisi 6 kolom kita panggil prompt **berurutan** — satu prompt per kolom. ID Peserta & Tanggal Daftar otomatis, jadi user cuma diminta 4 input.
+
 ```javascript
 function tambahPesertaCepat() {
   const ui = SpreadsheetApp.getUi();
-  const respon = ui.prompt(
-    "Tambah Peserta",
-    "Masukkan nama peserta:",
-    ui.ButtonSet.OK_CANCEL
-  );
 
-  if (respon.getSelectedButton() === ui.Button.OK) {
-    const nama = respon.getResponseText().trim();
-    if (!nama) return;
-
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Peserta");
-    const idBaru = _generateIdPeserta(sheet);
-
-    // [ID Peserta, Tanggal Daftar, Nama, Email, Instansi, Program]
-    sheet.appendRow([idBaru, new Date(), nama, "", "", ""]);
+  // Helper kecil: minta input, return null kalau user klik Cancel atau kosong.
+  function tanya(judul, label) {
+    const respon = ui.prompt(judul, label, ui.ButtonSet.OK_CANCEL);
+    if (respon.getSelectedButton() !== ui.Button.OK) return null;
+    const teks = respon.getResponseText().trim();
+    return teks || null;
   }
+
+  // 4 prompt berturut-turut. Kalau salah satu Cancel/kosong → batal.
+  const nama = tanya("Tambah Peserta (1/4)", "Nama:");
+  if (!nama) return;
+
+  const email = tanya("Tambah Peserta (2/4)", "Email:");
+  if (!email) return;
+
+  const instansi = tanya("Tambah Peserta (3/4)", "Instansi:");
+  if (!instansi) return;
+
+  const program = tanya("Tambah Peserta (4/4)", "Kode Program (mis. GAS-101):");
+  if (!program) return;
+
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Peserta");
+  const idBaru = _generateIdPeserta(sheet);
+
+  // [ID Peserta, Tanggal Daftar, Nama, Email, Instansi, Program]
+  sheet.appendRow([idBaru, new Date(), nama, email, instansi, program]);
+
+  ui.alert("Berhasil", `Peserta ${idBaru} (${nama}) tersimpan.`, ui.ButtonSet.OK);
 }
 
 /** Generate ID urut dari ID terakhir di Sheet. Format: PST-001, PST-002, ... */
@@ -221,6 +236,21 @@ function _generateIdPeserta(sheet) {
   return `PST-${String(angkaTertinggi + 1).padStart(3, "0")}`;
 }
 ```
+
+**Cara kerjanya** dari sisi user:
+
+```
+Klik menu "Tambah peserta cepat (prompt)"
+  ├─ Dialog 1: "Tambah Peserta (1/4) — Nama:"         → user ketik → OK
+  ├─ Dialog 2: "Tambah Peserta (2/4) — Email:"        → user ketik → OK
+  ├─ Dialog 3: "Tambah Peserta (3/4) — Instansi:"     → user ketik → OK
+  ├─ Dialog 4: "Tambah Peserta (4/4) — Kode Program:" → user ketik → OK
+  └─ Alert: "Berhasil — Peserta PST-009 (Sari) tersimpan."
+```
+
+User bisa **Cancel di langkah manapun** untuk batalkan keseluruhan — tidak ada baris setengah-jadi yang tertulis ke Sheet karena `appendRow` baru dipanggil setelah semua input terkumpul.
+
+> **Kalau form-nya panjang, sidebar/modal HTML lebih nyaman** — lihat section 3 untuk versi sidebar `bukaSidebarPeserta()` yang menampilkan semua field di satu form. Prompt cocok untuk **input kilat 1–4 field**; di luar itu UX-nya melelahkan.
 
 ## 3. HTML Sidebar & Modal
 
