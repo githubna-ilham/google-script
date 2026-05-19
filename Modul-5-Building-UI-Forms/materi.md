@@ -668,28 +668,71 @@ function importExcel(base64, fileName, mimeType) {
 
     if (data.length < 2) throw new Error("File kosong atau cuma header.");
 
-    const headers = data[0];
-    const rows    = data.slice(1);
+    const excelHeaders = data[0];
+    const excelRows    = data.slice(1);
 
     // 4. Validasi header (minimum) — kolom wajib di file Excel admin
     const expectedHeaders = ["Nama", "Email", "Instansi", "Program"];
-    const missing = expectedHeaders.filter((h) => !headers.includes(h));
+    const missing = expectedHeaders.filter((h) => !excelHeaders.includes(h));
     if (missing.length > 0) {
-      throw new Error(`Kolom hilang: ${missing.join(", ")}`);
+      throw new Error(`Kolom hilang di Excel: ${missing.join(", ")}`);
     }
 
-    // 5. Insert ke tab Peserta (1 round-trip)
+    // 5. MAPPING ke kolom tab Peserta — penting!
+    //    File Excel hanya punya 4 kolom (Nama, Email, Instansi, Program).
+    //    Tab Peserta punya 10 kolom (ID, Tanggal Daftar, ..., Link Sertifikat).
+    //    Kita perlu menempatkan tiap nilai ke kolom yang benar by header name.
     const target = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Peserta");
+    const targetHeaders = target.getRange(1, 1, 1, target.getLastColumn()).getValues()[0];
     const startRow = target.getLastRow() + 1;
-    target.getRange(startRow, 1, rows.length, headers.length).setValues(rows);
+    const numKolomTarget = targetHeaders.length;
 
-    return { inserted: rows.length };
+    // Cari index kolom di target untuk tiap kolom Excel.
+    // Hasil: { excelIdx: targetIdx } — mis. { 0: 2, 1: 3, 2: 4, 3: 5 }.
+    const mapping = {};
+    excelHeaders.forEach((h, idx) => {
+      const targetIdx = targetHeaders.indexOf(h);
+      if (targetIdx !== -1) mapping[idx] = targetIdx;
+    });
+
+    // Build rows yang aligned ke struktur target Sheet.
+    const tanggalImport = new Date();
+    const newRows = excelRows.map((row, i) => {
+      // Mulai dengan row kosong sebanyak kolom target
+      const aligned = new Array(numKolomTarget).fill("");
+
+      // Auto-generate ID Peserta & Tanggal Daftar (kolom 0 & 1)
+      const nomor = startRow + i - 1;  // startRow=11 → PST-010 untuk i=0
+      aligned[targetHeaders.indexOf("ID Peserta")]    = `PST-${String(nomor).padStart(3, "0")}`;
+      aligned[targetHeaders.indexOf("Tanggal Daftar")] = tanggalImport;
+
+      // Isi sisanya dari Excel sesuai mapping
+      Object.entries(mapping).forEach(([excelIdx, targetIdx]) => {
+        aligned[targetIdx] = row[excelIdx];
+      });
+
+      return aligned;
+    });
+
+    // 6. Insert ke tab Peserta (1 round-trip)
+    target.getRange(startRow, 1, newRows.length, numKolomTarget).setValues(newRows);
+
+    return { inserted: newRows.length };
   } finally {
-    // 6. Cleanup — hapus file Sheet temp di Drive (apapun hasil try block)
+    // 7. Cleanup — hapus file Sheet temp di Drive (apapun hasil try block)
     DriveApp.getFileById(uploadedFile.id).setTrashed(true);
   }
 }
 ```
+
+**Apa yang baru dibanding versi sebelumnya?**
+
+| Sebelum | Sesudah |
+|---|---|
+| `target.setValues(rows)` mulai kolom A | Tiap baris di-**map by header name** ke kolom target yang benar |
+| Excel 4 kolom → masuk kolom A–D (shift kiri, jadi ngisi ID Peserta!) | Excel 4 kolom → masuk kolom Nama/Email/Instansi/Program sesuai header |
+| ID Peserta & Tanggal Daftar kosong (atau pre-existing data ke-shift) | Auto-generate `PST-XXX` + tanggal hari ini untuk tiap baris |
+| Kolom Nilai/Status/dll. ikut ke-overwrite | Kolom yang tidak ada di Excel dibiarkan kosong (di-fill `""`) |
 
 ### 7.5 Preview Sebelum Import (UX lebih baik)
 
