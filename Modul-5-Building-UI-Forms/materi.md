@@ -734,114 +734,14 @@ function importExcel(base64, fileName, mimeType) {
 | ID Peserta & Tanggal Daftar kosong (atau pre-existing data ke-shift) | Auto-generate `PST-XXX` + tanggal hari ini untuk tiap baris |
 | Kolom Nilai/Status/dll. ikut ke-overwrite | Kolom yang tidak ada di Excel dibiarkan kosong (di-fill `""`) |
 
-### 7.5 Preview Sebelum Import (UX lebih baik)
-
-User suka cemas saat upload file besar — "kira-kira datanya bener tidak ya?". Tambahkan **preview**: convert + baca di server, kembalikan struktur + 5 baris pertama, baru insert kalau user klik Confirm.
-
-**Server**:
-
-```javascript
-function previewExcel(base64, fileName, mimeType) {
-  const bytes = Utilities.base64Decode(base64);
-  const blob  = Utilities.newBlob(bytes, mimeType, fileName);
-  const uploaded = Drive.Files.create(
-    { name: "preview-" + Date.now(), mimeType: MimeType.GOOGLE_SHEETS },
-    blob
-  );
-
-  try {
-    const sheet = SpreadsheetApp.openById(uploaded.id).getSheets()[0];
-    const data  = sheet.getDataRange().getValues();
-    return {
-      totalRows: Math.max(0, data.length - 1),
-      headers:   data[0] || [],
-      preview:   data.slice(1, 6),    // 5 baris pertama
-      tempId:    uploaded.id          // dikirim balik untuk confirmImport
-    };
-  } catch (err) {
-    // Cleanup kalau preview gagal
-    DriveApp.getFileById(uploaded.id).setTrashed(true);
-    throw err;
-  }
-}
-
-function confirmImport(tempId) {
-  try {
-    const sheet = SpreadsheetApp.openById(tempId).getSheets()[0];
-    const data  = sheet.getDataRange().getValues();
-    const headers = data[0];
-    const rows    = data.slice(1);
-
-    const target = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Peserta");
-    const startRow = target.getLastRow() + 1;
-    target.getRange(startRow, 1, rows.length, headers.length).setValues(rows);
-
-    return { inserted: rows.length };
-  } finally {
-    DriveApp.getFileById(tempId).setTrashed(true);
-  }
-}
-```
-
-**Client flow** (2-step):
-
-```html
-<button onclick="preview()">1. Preview</button>
-<div id="previewArea"></div>
-<button id="btn-confirm" style="display:none" onclick="kirimImport()">2. Import</button>
-
-<script>
-let cachedTempId;
-
-function preview() {
-  const file = document.getElementById("file").files[0];
-  if (!file) return alert("Pilih file dulu.");
-
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const base64 = e.target.result.split(",")[1];
-    google.script.run
-      .withSuccessHandler((r) => {
-        cachedTempId = r.tempId;
-        renderTabel(r);
-        document.getElementById("btn-confirm").style.display = "inline";
-      })
-      .withFailureHandler((err) => alert("Error: " + err.message))
-      .previewExcel(base64, file.name, file.type);
-  };
-  reader.readAsDataURL(file);
-}
-
-function kirimImport() {
-  google.script.run
-    .withSuccessHandler((r) => alert(`${r.inserted} baris dimasukkan.`))
-    .confirmImport(cachedTempId);
-}
-
-function renderTabel(r) {
-  const html = `
-    <p>Total ${r.totalRows} baris, kolom: ${r.headers.join(", ")}</p>
-    <table border="1" style="width:100%; border-collapse: collapse;">
-      <tr>${r.headers.map((h) => `<th>${h}</th>`).join("")}</tr>
-      ${r.preview.map((row) =>
-        `<tr>${row.map((c) => `<td>${c}</td>`).join("")}</tr>`
-      ).join("")}
-    </table>
-  `;
-  document.getElementById("previewArea").innerHTML = html;
-}
-</script>
-```
-
-### 7.6 Best Practices
+### 7.5 Best Practices
 
 1. **Validasi header dulu** — gagal cepat kalau struktur file tidak sesuai. Pesan error harus sebutkan kolom yang hilang/salah.
-2. **Validasi tiap baris** — cek tipe data (gaji harus angka, email harus valid). Kumpulkan error → tampilkan ke user, jangan langsung crash di baris pertama yang salah.
+2. **Validasi tiap baris** — cek tipe data (nilai harus angka, email harus valid). Kumpulkan error → tampilkan ke user, jangan langsung crash di baris pertama yang salah.
 3. **Limit file size** — `google.script.run` ada batas payload ~50 MB. Cek `file.size` di client (`<input type="file">.files[0].size`) sebelum upload.
 4. **Batch besar = pakai chunking** — kalau > 5.000 baris, pecah per 1.000 baris dengan `setValues` terpisah. Total round-trip masih jauh lebih sedikit dari per-cell.
 5. **Selalu cleanup file temp** — kalau pakai pola convert Excel, hapus file Drive temp di `finally` block supaya tidak menumpuk.
-6. **Preview sebelum Import** — pola 2-step jauh mengurangi user anxiety dan memungkinkan koreksi sebelum data masuk.
-7. **Audit log** — catat ke Sheet `Audit-Log`: siapa upload, kapan, file apa, berapa baris, sukses/fail. Berguna saat ada masalah data nantinya.
+6. **Audit log** — catat ke Sheet `Audit-Log`: siapa upload, kapan, file apa, berapa baris, sukses/fail. Berguna saat ada masalah data nantinya.
 
 ---
 
