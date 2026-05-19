@@ -559,7 +559,9 @@ flowchart LR
 
 Apps Script **tidak bisa baca .xlsx langsung**. Triknya: **upload file ke Drive sebagai Google Sheet** — Drive API otomatis konversi `.xlsx` → Sheet, lalu kita baca pakai `SpreadsheetApp` seperti biasa. Setelah selesai, file Sheet temp dihapus supaya tidak menumpuk di Drive.
 
-> **Wajib enable Advanced Drive Service**: Editor → ikon **+** di **Services** (sidebar kiri) → cari **Drive API** → Add. Tanpa ini, `Drive.Files.insert(..., { convert: true })` tidak tersedia.
+> **Wajib enable Advanced Drive Service**: Editor → ikon **+** di **Services** (sidebar kiri) → cari **Drive API** → pilih **versi v3** (default) → Add. Tanpa ini, `Drive.Files.create(...)` tidak tersedia.
+>
+> Catatan versi: kalau Anda menemukan tutorial lain yang pakai `Drive.Files.insert(..., { convert: true })` — itu syntax **API v2** yang lama. Sekarang default-nya v3 yang pakai `Drive.Files.create()` dengan `mimeType` di resource (lihat kode di §7.4).
 
 ### 7.2 Format File Excel yang Diharapkan
 
@@ -651,11 +653,12 @@ function importExcel(base64, fileName, mimeType) {
   const blob  = Utilities.newBlob(bytes, mimeType, fileName);
 
   // 2. Upload ke Drive sebagai Google Sheet (auto-convert xlsx)
+  //    Set mimeType = GOOGLE_SHEETS → Drive konversi otomatis dari xlsx.
   const resource = {
-    title:    fileName.replace(/\.xlsx?$/i, "") + "-temp-import",
+    name:     fileName.replace(/\.xlsx?$/i, "") + "-temp-import",
     mimeType: MimeType.GOOGLE_SHEETS
   };
-  const uploadedFile = Drive.Files.insert(resource, blob, { convert: true });
+  const uploadedFile = Drive.Files.create(resource, blob);
 
   try {
     // 3. Baca dari Sheet hasil convert
@@ -698,10 +701,9 @@ User suka cemas saat upload file besar — "kira-kira datanya bener tidak ya?". 
 function previewExcel(base64, fileName, mimeType) {
   const bytes = Utilities.base64Decode(base64);
   const blob  = Utilities.newBlob(bytes, mimeType, fileName);
-  const uploaded = Drive.Files.insert(
-    { title: "preview-" + Date.now(), mimeType: MimeType.GOOGLE_SHEETS },
-    blob,
-    { convert: true }
+  const uploaded = Drive.Files.create(
+    { name: "preview-" + Date.now(), mimeType: MimeType.GOOGLE_SHEETS },
+    blob
   );
 
   try {
