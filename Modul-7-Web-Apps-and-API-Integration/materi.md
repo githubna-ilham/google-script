@@ -456,25 +456,161 @@ File HTML di-bagi tiga: **CSS untuk styling**, **markup HTML untuk struktur**, *
 </html>
 ```
 
-### 6.5 Persiapan & Deploy
+### 6.5 Langkah-Langkah Membangun dari Nol
 
-Sebelum deploy, set Script Properties supaya server tahu Sheet mana yang dipakai:
+Pertanyaan yang sering muncul: **mulai dari mana — Spreadsheet dulu atau Apps Script dulu?**
+
+Jawabannya: **Spreadsheet dulu**, karena Spreadsheet adalah sumber data. Apps Script tidak bisa membaca data dari Sheet yang belum ada. Urutan lengkap:
+
+```
+1. Bikin Spreadsheet (sumber data)
+   ↓
+2. Bikin project Apps Script (logika)
+   ↓
+3. Buat file dashboard.html (tampilan)
+   ↓
+4. Tulis kode di Code.gs (doGet + bacaDataDashboard)
+   ↓
+5. Hubungkan Apps Script ke Spreadsheet (Script Properties)
+   ↓
+6. Test function di editor (Run manual)
+   ↓
+7. Deploy sebagai Web App
+   ↓
+8. Buka URL di browser
+```
+
+#### Langkah 1 — Siapkan Spreadsheet
+
+1. Buka [sheets.google.com](https://sheets.google.com) → klik **Blank** untuk Sheet baru.
+2. Rename Sheet jadi `Latihan-M7-Dashboard`.
+3. Bikin dua tab: `Peserta` dan `Program`. Struktur lengkap (header + sample data 30 baris) ada di [`template-spreadsheet.md`](./template-spreadsheet.md).
+4. Pastikan kolom tanggal di-format **Date** (Format → Number → Date).
+5. **Copy ID Sheet** dari URL — bagian antara `/d/` dan `/edit`:
+   ```
+   https://docs.google.com/spreadsheets/d/  <-- COPY YANG INI -->  /edit
+   ```
+   Simpan ID ini sebentar, akan dipakai di Langkah 5.
+
+#### Langkah 2 — Bikin Project Apps Script
+
+Ada dua opsi:
+
+| Opsi | Cara | Kapan dipakai |
+|---|---|---|
+| **Container-bound** | Dari Sheet → **Extensions → Apps Script** | Kalau script erat dengan 1 Sheet tertentu (akses pakai `getActiveSpreadsheet()` otomatis). |
+| **Standalone** | Buka [script.google.com](https://script.google.com) → **+ New project** | Kalau script bisa berdiri sendiri (akses Sheet via `openById(SHEET_ID)`). **Direkomendasikan** untuk Web App. |
+
+Untuk dashboard ini pilih **Standalone**. Rename project-nya jadi `Dashboard-Pelatihan`.
+
+#### Langkah 3 — Buat File `dashboard.html`
+
+Di editor Apps Script:
+
+1. Klik ikon **+** di sidebar **Files** (kiri atas, sebelah "Code.gs").
+2. Pilih **HTML**.
+3. Beri nama `dashboard` (tanpa `.html` — Apps Script otomatis menambahkan).
+4. Hapus konten default, copy isi dari file `dashboard.html` (di folder modul ini) ke editor.
+5. Save (Cmd/Ctrl + S).
+
+#### Langkah 4 — Tulis Kode di `Code.gs`
+
+Di file `Code.gs` (yang sudah ada by default), tulis dua function:
 
 ```javascript
-function setupDashboard() {
-  PropertiesService.getScriptProperties()
-    .setProperty("DASHBOARD_SHEET_ID", "1AbCdEf...ID_SHEET_PELATIHAN");
+// Entry point: dipanggil saat user buka URL Web App
+function doGet(e) {
+  return HtmlService.createHtmlOutputFromFile("dashboard")
+    .setTitle("Dashboard Pelatihan")
+    .addMetaTag("viewport", "width=device-width, initial-scale=1");
+}
+
+// Dipanggil dari dashboard.html via google.script.run
+function bacaDataDashboard() {
+  const SHEET_ID = PropertiesService.getScriptProperties().getProperty("DASHBOARD_SHEET_ID");
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  // ... isi function (lihat kode lengkap di §6.2 atau di contoh.js)
 }
 ```
 
-Jalankan `setupDashboard()` sekali manual. Lalu:
+Save (Cmd/Ctrl + S).
 
-1. **Deploy → New deployment → Type: Web app**.
-2. **Execute as: Me** (script jalan atas nama Anda — akses Sheet pakai izin Anda).
-3. **Who has access: Anyone** (publik) atau **Anyone with Google account** (login Google saja).
-4. Deploy → Authorize → copy URL → buka di browser baru → dashboard muncul.
+#### Langkah 5 — Hubungkan Apps Script ke Spreadsheet via Script Properties
 
-### 6.6 Pola Penting yang Muncul
+Apps Script perlu tahu **Sheet mana** yang dipakai. Cara paling rapi: simpan ID Sheet di **Script Properties** (jangan hardcode di kode — supaya tidak commit/share secret ID).
+
+1. Di editor, klik ikon ⚙️ **Project Settings** (sidebar kiri, paling bawah).
+2. Scroll ke section **Script Properties**.
+3. Klik **Add script property**:
+   - **Property**: `DASHBOARD_SHEET_ID`
+   - **Value**: paste ID Sheet dari Langkah 1.
+4. Klik **Save script properties**.
+
+#### Langkah 6 — Test Function Manual (Sebelum Deploy)
+
+Jangan langsung deploy. Test dulu function `bacaDataDashboard()` jalan benar:
+
+1. Di editor `Code.gs`, di dropdown atas (sebelah tombol Run) pilih function `bacaDataDashboard`.
+2. Klik tombol **▶ Run**.
+3. Saat pertama kali, akan muncul dialog **Authorize**:
+   - Klik **Review permissions**.
+   - Pilih akun Google Anda.
+   - Klik **Advanced** → **Go to Dashboard-Pelatihan (unsafe)** (normal, karena script belum verified Google).
+   - Klik **Allow**.
+4. Cek **Execution log** (panel bawah). Harus muncul return object dengan `statistik`, `program`, `peserta`. Kalau error → biasanya `DASHBOARD_SHEET_ID` salah atau tab tidak ditemukan.
+
+> **Kenapa test manual dulu?** Kalau langsung deploy lalu buka URL, error muncul di sisi client tanpa stack trace yang jelas. Test manual di editor langsung dapat error message detail.
+
+#### Langkah 7 — Deploy sebagai Web App
+
+1. Klik tombol biru **Deploy** (pojok kanan atas) → **New deployment**.
+2. Klik ⚙️ **Select type** → pilih **Web app**.
+3. Isi form:
+   - **Description**: `Dashboard Pelatihan v1` (bebas, untuk catatan internal).
+   - **Execute as**: **Me** (script jalan atas nama Anda — akses Sheet pakai izin Anda).
+   - **Who has access**:
+     - **Anyone** = publik, tanpa login. Cocok untuk dashboard yang bisa di-share ke calon peserta.
+     - **Anyone with Google account** = wajib login Google.
+     - **Only myself** = hanya Anda yang bisa buka.
+4. Klik **Deploy**.
+5. Copy **Web app URL** yang muncul.
+
+#### Langkah 8 — Buka URL & Verifikasi
+
+1. Buka URL di **tab incognito / browser lain** (untuk simulasi pengunjung anonim).
+2. Dashboard harus tampil dengan data dari Sheet.
+3. Cek:
+   - [ ] Statistik di kartu sesuai data Sheet.
+   - [ ] Tabel program terisi 5 baris.
+   - [ ] Tabel peserta terisi semua baris dari Sheet.
+   - [ ] Filter search & dropdown jalan.
+   - [ ] Tombol Refresh re-fetch data.
+
+#### Saat Update Kode di Kemudian Hari
+
+Setelah dashboard live, kalau Anda **edit kode** (`Code.gs` atau `dashboard.html`), URL Web App **tidak otomatis pakai versi baru**. Anda perlu deploy ulang:
+
+1. **Deploy → Manage deployments**.
+2. Klik ikon ✏️ **Edit** di sebelah deployment yang aktif.
+3. Pilih dropdown **Version** → **New version**.
+4. Klik **Deploy**.
+
+> **Tip selama development**: pakai **Deploy → Test deployments** untuk URL temporary yang otomatis pakai kode terbaru tanpa harus deploy versi baru tiap save. URL test berbeda dengan URL production.
+
+---
+
+### 6.6 Troubleshooting Umum
+
+| Gejala | Kemungkinan Penyebab | Solusi |
+|---|---|---|
+| Dashboard tampil kosong (semua 0) | `DASHBOARD_SHEET_ID` belum di-set atau salah | Cek Script Properties, pastikan ID Sheet benar |
+| "Script function not found: doGet" | Belum save kode atau belum deploy versi baru | Save (Ctrl+S), lalu Manage deployments → New version |
+| "Permission denied" saat buka URL | Akses Web App di-set "Only myself" tapi dibuka pakai akun lain | Ubah Who has access ke Anyone atau Anyone with Google account |
+| `Cannot read property 'getDataRange'` | Tab `Peserta` atau `Program` tidak ada di Sheet | Cek nama tab harus persis (case-sensitive) |
+| Filter dropdown program kosong | Tab `Program` kosong | Isi minimal 1 baris di tab `Program` |
+| Tabel program semua "Terisi: 0" | Kolom `Program` di tab Peserta tidak match dengan `Kode` di tab Program | Cek konsistensi kode (mis. `GAS-101` harus sama persis) |
+
+### 6.7 Pola Penting yang Muncul
 
 1. **Read-only dashboard**: server hanya `read` Sheet (`getValues`), tidak ada `write`. Aman untuk dibagikan publik karena viewer tidak bisa modify data — Sheet asli tetap aman.
 
