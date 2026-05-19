@@ -2,7 +2,7 @@
 
 Sampai Modul 4, semua interaksi dengan kode lewat **Run** di editor atau trigger otomatis. Modul 5 mengenalkan **antarmuka untuk pengguna akhir**: dialog, sidebar, dan custom form HTML yang berjalan di dalam Google Sheets/Docs.
 
-> 🧩 **Studi kasus berkelanjutan dari Modul 3**: data peserta & program lembaga pelatihan yang Anda olah di Modul 3 (tab `Peserta`, `Program`) sekarang akan diberi **antarmuka admin**. Bayangkan admin lembaga yang tidak menulis kode — mereka tetap perlu cara untuk tambah peserta baru, daftarkan ke program, ubah status, lihat daftar, dll. Itulah yang dibangun di modul ini.
+> **Studi kasus berkelanjutan dari Modul 3**: data peserta & program lembaga pelatihan yang Anda olah di Modul 3 (tab `Peserta`, `Program`) sekarang akan diberi **antarmuka admin**. Bayangkan admin lembaga yang tidak menulis kode — mereka tetap perlu cara untuk tambah peserta baru, daftarkan ke program, ubah status, lihat daftar, dll. Itulah yang dibangun di modul ini.
 
 ### Struktur data yang dipakai di seluruh contoh modul ini
 
@@ -60,7 +60,7 @@ Custom menu adalah **pintu masuk utama** untuk user akhir memakai automation kit
 ```javascript
 function onOpen() {
   SpreadsheetApp.getUi()
-    .createMenu("⚡ Admin Pelatihan")                              // 1. Bikin menu utama
+    .createMenu("Menu Pelatihan")                              // 1. Bikin menu utama
     .addItem("Tambah peserta cepat (prompt)", "tambahPesertaCepat") // 2. Item → function
     .addItem("Konfirmasi hapus (alert)",      "konfirmasiHapus")
     .addSeparator()                                                 // 3. Garis pemisah
@@ -75,7 +75,7 @@ function onOpen() {
 Hasil di toolbar Sheet (setelah reload):
 
 ```
-[File] [Edit] [View] ... [Help] [⚡ Admin Pelatihan ▾]
+[File] [Edit] [View] ... [Help] [Menu Pelatihan ▾]
                                   ├─ Tambah peserta cepat (prompt)
                                   ├─ Konfirmasi hapus (alert)
                                   ├──────────────────────
@@ -90,7 +90,7 @@ Hasil di toolbar Sheet (setelah reload):
 | Method | Fungsi |
 |---|---|
 | **`SpreadsheetApp.getUi()`** | Ambil object `Ui` — root semua interaksi UI di container-bound script. Ada juga `DocumentApp.getUi()` untuk Doc, `FormApp.getUi()` untuk Form. |
-| **`.createMenu(label)`** | Bikin menu builder dengan label yang akan tampil di toolbar. Boleh pakai emoji (`⚡`, `🤖`, `📊`) untuk visual hint. |
+| **`.createMenu(label)`** | Bikin menu builder dengan label yang akan tampil di toolbar. |
 | **`.addItem(label, functionName)`** | Tambah baris menu. `functionName` adalah **string nama function** di project yang sama. Saat user klik → function dipanggil. |
 | **`.addSeparator()`** | Garis pembatas — group item secara visual. Tidak bisa diklik. |
 | **`.addSubMenu(menu)`** | Tambah sub-menu (menu di dalam menu). Argumennya `Menu` object lain. Akan tampil dengan tanda ▸ di kanan. |
@@ -102,15 +102,15 @@ Hasil di toolbar Sheet (setelah reload):
 function onOpen() {
   const ui = SpreadsheetApp.getUi();
 
-  const submenuPeserta = ui.createMenu("👥 Peserta")
+  const submenuPeserta = ui.createMenu("Peserta")
     .addItem("Tambah cepat",   "tambahPesertaCepat")
     .addItem("Buka CRUD",      "bukaSidebarCRUD");
 
-  const submenuProgram = ui.createMenu("📚 Program")
+  const submenuProgram = ui.createMenu("Program")
     .addItem("Form tambah program", "bukaModalProgram")
     .addItem("Lihat semua program", "tampilSemuaProgram");
 
-  ui.createMenu("⚡ Admin Pelatihan")
+  ui.createMenu("Menu Pelatihan")
     .addSubMenu(submenuPeserta)
     .addSubMenu(submenuProgram)
     .addSeparator()
@@ -121,11 +121,11 @@ function onOpen() {
 
 Hasilnya:
 ```
-⚡ Admin Pelatihan ▾
-├─ 👥 Peserta ▸
+Menu Pelatihan ▾
+├─ Peserta ▸
 │               ├─ Tambah cepat
 │               └─ Buka CRUD
-├─ 📚 Program ▸
+├─ Program ▸
 │               ├─ Form tambah program
 │               └─ Lihat semua program
 ├──────────────
@@ -162,7 +162,7 @@ Menu bisa di-generate dinamis dari data:
 
 ```javascript
 function onOpen() {
-  const menu = SpreadsheetApp.getUi().createMenu("📋 Laporan");
+  const menu = SpreadsheetApp.getUi().createMenu("Laporan");
 
   // Generate item per sheet di spreadsheet
   SpreadsheetApp.getActiveSpreadsheet().getSheets().forEach((s) => {
@@ -173,7 +173,7 @@ function onOpen() {
 }
 ```
 
-> ⚠️ Hati-hati: nama function di `addItem` tetap harus **fixed string saat runtime** — peserta perlu tahu nama function-nya untuk dipanggil. Pattern ini umumnya dikombinasikan dengan switch/lookup table di handler.
+> Hati-hati: nama function di `addItem` tetap harus **fixed string saat runtime** — peserta perlu tahu nama function-nya untuk dipanggil. Pattern ini umumnya dikombinasikan dengan switch/lookup table di handler.
 
 ---
 
@@ -248,7 +248,7 @@ project Apps Script/
 // Code.gs
 function onOpen() {
   SpreadsheetApp.getUi()
-    .createMenu("⚡ Admin Pelatihan")
+    .createMenu("Menu Pelatihan")
     .addItem("Form Peserta", "bukaSidebarPeserta")
     .addToUi();
 }
@@ -472,12 +472,12 @@ Use case nyata di lembaga pelatihan: admin terima file Excel daftar peserta dari
 
 ```mermaid
 flowchart LR
-    A["📂 User pilih file .xlsx<br/>(input type=file)"]:::a
-    --> B["📦 Client baca isi<br/>FileReader → base64"]:::b
-    --> C["📡 google.script.run<br/>kirim ke server"]:::c
-    --> D["☁️ Drive convert<br/>xlsx ➜ Sheet temp"]:::d
-    --> E["📖 Baca pakai<br/>SpreadsheetApp"]:::e
-    --> F["✅ setValues ke Sheet target<br/>+ hapus file temp"]:::f
+    A["User pilih file .xlsx<br/>(input type=file)"]:::a
+    --> B["Client baca isi<br/>FileReader → base64"]:::b
+    --> C["google.script.run<br/>kirim ke server"]:::c
+    --> D["Drive convert<br/>xlsx ➜ Sheet temp"]:::d
+    --> E["Baca pakai<br/>SpreadsheetApp"]:::e
+    --> F["setValues ke Sheet target<br/>+ hapus file temp"]:::f
 
     classDef a fill:#fef3c7,stroke:#f59e0b,stroke-width:2px
     classDef b fill:#dbeafe,stroke:#3b82f6
@@ -491,7 +491,7 @@ flowchart LR
 
 Apps Script **tidak bisa baca .xlsx langsung**. Triknya: **upload file ke Drive sebagai Google Sheet** — Drive API otomatis konversi `.xlsx` → Sheet, lalu kita baca pakai `SpreadsheetApp` seperti biasa. Setelah selesai, file Sheet temp dihapus supaya tidak menumpuk di Drive.
 
-> ⚠️ **Wajib enable Advanced Drive Service**: Editor → ikon **+** di **Services** (sidebar kiri) → cari **Drive API** → Add. Tanpa ini, `Drive.Files.insert(..., { convert: true })` tidak tersedia.
+> **Wajib enable Advanced Drive Service**: Editor → ikon **+** di **Services** (sidebar kiri) → cari **Drive API** → Add. Tanpa ini, `Drive.Files.insert(..., { convert: true })` tidak tersedia.
 
 ### 7.2 HTML Side
 
